@@ -33,8 +33,6 @@
 </script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
 
 <style>
 :root {
@@ -260,8 +258,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .leaflet-bar a:hover{background:var(--border)!important}
 .leaflet-control-attribution{background:rgba(15,25,35,.7)!important;color:var(--muted)!important;font-size:10px!important}
 .leaflet-control-attribution a{color:var(--muted)!important}
-.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(232,125,43,.2)!important}
-.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:rgba(232,125,43,.6)!important;color:#fff!important;font-weight:700}
 
 /* MOBILE adjustments */
 @media(max-width:500px){
@@ -352,7 +348,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script>
 'use strict';
 
@@ -427,7 +422,7 @@ function gkToLatLon(X, Y) {
 
 // ── ESTADO ─────────────────────────────────────────────────────────────────
 let datos = [];          // array de objetos
-let map, clusterLayer, radiusCircle;
+let map, markersLayer, radiusCircle;
 let pwaDeferredPrompt = null;
 
 // ── PWA EVENTS ─────────────────────────────────────────────────────────────
@@ -473,13 +468,8 @@ function initMap(){
   const mapEl = document.querySelector('#map .leaflet-tile-pane');
   if(mapEl) mapEl.style.cssText='filter:invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.88) saturate(0.4)';
 
-  clusterLayer = L.markerClusterGroup({
-    maxClusterRadius:50,
-    spiderfyOnMaxZoom:true,
-    showCoverageOnHover:false,
-    zoomToBoundsOnClick:true
-  });
-  map.addLayer(clusterLayer);
+  markersLayer = L.layerGroup();
+  map.addLayer(markersLayer);
 }
 
 // ── CSV PARSER ─────────────────────────────────────────────────────────────
@@ -743,7 +733,7 @@ async function buscar(){
     const dentro = datos.filter(d => haversine(geo.lat,geo.lon,d.lat,d.lon) <= radio);
 
     // Limpiar capa
-    clusterLayer.clearLayers();
+    markersLayer.clearLayers();
     if(radiusCircle){ map.removeLayer(radiusCircle); radiusCircle=null; }
 
     // Círculo de radio
@@ -753,13 +743,12 @@ async function buscar(){
       fillColor:'#E87D2B', fillOpacity:0.06
     }).addTo(map);
 
-    // Marcadores
-    const markers = dentro.map(d => {
+    // Marcadores estáticos (sin clustering)
+    dentro.forEach(d => {
       const m = L.marker([d.lat,d.lon],{icon:makeIcon(d.tipo)});
       m.bindPopup(makePopup(d),{className:'autotrol-popup',maxWidth:240});
-      return m;
+      markersLayer.addLayer(m);
     });
-    clusterLayer.addLayers(markers);
 
     // Mover mapa
     map.setView([geo.lat,geo.lon], radio<=300?17:radio<=600?16:radio<=1500?15:14);
