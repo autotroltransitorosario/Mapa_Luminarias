@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AUTOTROL · Equipamiento Alumbrado</title>
+<meta name="description" content="Mapa de equipamiento de alumbrado público con búsqueda por dirección y radio">
+<meta name="theme-color" content="#E87D2B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alumbrado">
+
+<!-- Manifest dinámico -->
+<script>
+(function(){
+  var LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNXG14zYAAAiMSURBVHic7d1bbBxXGcDx/5zdXXt3be/aiZ3YcZzEcRwncUJIUkpLSwstlSgVUBCXBy4SQkJCQkI8IPGEeOCBFx54QEgIIYSEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEEEIIIYSQkBBCCCGEkP8D4BkqoO2VQLEAAAAASUVORK5CYII=';
+  var startUrl=location.href.split('?')[0];
+  var scope=startUrl.substring(0,startUrl.lastIndexOf('/')+1);
+  var m={name:'AUTOTROL · Alumbrado',short_name:'Alumbrado',
+    description:'Mapa de equipamiento de alumbrado público',
+    start_url:startUrl,scope:scope,display:'standalone',
+    orientation:'portrait-primary',background_color:'#0f1923',theme_color:'#E87D2B',
+    lang:'es',icons:[
+      {src:LOGO,sizes:'192x192',type:'image/png',purpose:'any'},
+      {src:LOGO,sizes:'512x512',type:'image/png',purpose:'any maskable'}
+    ]};
+  var blob=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+  var link=document.createElement('link');
+  link.rel='manifest'; link.href=URL.createObjectURL(blob);
+  document.head.appendChild(link);
+})();
+</script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+
+<style>
+:root {
+  --bg: #0f1923;
+  --card: #16222f;
+  --border: #1e3048;
+  --orange: #E87D2B;
+  --orange-dim: rgba(232,125,43,0.15);
+  --text: #e0e8f0;
+  --muted: #7a95b0;
+  --lampara: #FFD166;
+  --columna: #4FC3F7;
+  --transversal: #81C784;
+  --other: #90A4AE;
+  --radius: 8px;
+  --header-h: 56px;
+  --search-h: 60px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
+
+/* HEADER */
+#header{
+  position:fixed;top:0;left:0;right:0;height:var(--header-h);
+  background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:10px;z-index:1000;
+}
+#header-logo{width:32px;height:32px;flex-shrink:0}
+#header-title{font-size:15px;font-weight:700;color:var(--text);flex:1;min-width:0}
+#header-title span{color:var(--orange)}
+#count-badge{
+  background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);
+  font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;
+}
+
+/* SEARCH BAR */
+#searchbar{
+  position:fixed;top:var(--header-h);left:0;right:0;
+  background:var(--card);border-bottom:1px solid var(--border);
+  padding:8px 10px;display:flex;align-items:center;gap:6px;z-index:999;
+  flex-wrap:wrap;
+}
+#addr-input{
+  flex:1;min-width:120px;height:38px;padding:0 12px;
+  background:#0f1923;border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);font-size:14px;outline:none;
+  transition:border-color .2s;
+}
+#addr-input:focus{border-color:var(--orange)}
+#addr-input::placeholder{color:var(--muted)}
+#radius-wrap{display:flex;align-items:center;gap:5px;white-space:nowrap}
+#radius-wrap label{font-size:12px;color:var(--muted)}
+#radius-input{
+  width:70px;height:38px;padding:0 8px;
+  background:#0f1923;border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);font-size:14px;outline:none;text-align:center;
+  transition:border-color .2s;
+}
+#radius-input:focus{border-color:var(--orange)}
+#radius-wrap span{font-size:12px;color:var(--muted)}
+#search-btn{
+  height:38px;padding:0 16px;
+  background:var(--orange);border:none;border-radius:var(--radius);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+  white-space:nowrap;transition:opacity .2s;
+}
+#search-btn:hover{opacity:.85}
+#search-btn:disabled{opacity:.5;cursor:default}
+#search-btn.loading{
+  background:var(--card);border:1px solid var(--border);color:var(--muted);
+}
+
+/* MAP */
+#map{
+  position:fixed;
+  top:calc(var(--header-h) + var(--search-h));
+  left:0;right:0;bottom:0;
+  background:var(--bg);
+}
+
+/* TOAST */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:rgba(22,34,47,.95);border:1px solid var(--border);
+  color:var(--text);font-size:13px;padding:8px 16px;border-radius:20px;
+  z-index:2000;white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .3s;
+}
+#toast.show{opacity:1}
+
+/* LEGEND */
+#legend{
+  position:fixed;bottom:16px;left:10px;
+  background:rgba(22,34,47,.92);border:1px solid var(--border);
+  border-radius:var(--radius);padding:8px 10px;z-index:1000;
+  font-size:11px;line-height:1.8;
+}
+.leg-row{display:flex;align-items:center;gap:6px}
+.leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(255,255,255,.25)}
+
+/* LOADING OVERLAY */
+#loading{
+  position:fixed;inset:0;
+  background:rgba(15,25,35,.85);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;z-index:3000;
+}
+#loading.hidden{display:none}
+.spinner{
+  width:40px;height:40px;border:3px solid var(--border);
+  border-top-color:var(--orange);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-msg{font-size:14px;color:var(--muted)}
+
+/* INSTALL BUTTON */
+#installBtn{
+  display:none;height:38px;padding:0 12px;
+  background:transparent;border:1px solid var(--orange);
+  color:var(--orange);font-size:12px;font-weight:700;
+  border-radius:var(--radius);cursor:pointer;white-space:nowrap;
+  transition:background .2s;
+}
+#installBtn.visible{display:block}
+#installBtn:hover{background:var(--orange-dim)}
+
+/* IOS BANNER */
+#iosBanner{
+  display:none;position:fixed;bottom:70px;left:10px;right:10px;
+  background:var(--card);border:1px solid var(--orange);border-radius:var(--radius);
+  padding:10px 14px;z-index:2000;font-size:13px;color:var(--text);
+}
+#iosBanner .ios-close{float:right;cursor:pointer;color:var(--muted);font-size:16px}
+
+/* POPUP */
+.autotrol-popup .leaflet-popup-content-wrapper{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,.5);
+  color:var(--text);padding:0;
+}
+.autotrol-popup .leaflet-popup-content{margin:0;min-width:180px}
+.autotrol-popup .leaflet-popup-tip{background:var(--card)}
+.popup-body{padding:10px 12px}
+.popup-serie{font-size:13px;font-weight:700;color:var(--orange);margin-bottom:4px}
+.popup-tipo{
+  display:inline-block;font-size:11px;font-weight:700;
+  padding:2px 8px;border-radius:10px;margin-bottom:6px;
+}
+.popup-tipo.lampara{background:rgba(255,209,102,.2);color:var(--lampara);border:1px solid var(--lampara)}
+.popup-tipo.columna{background:rgba(79,195,247,.2);color:var(--columna);border:1px solid var(--columna)}
+.popup-tipo.transversal{background:rgba(129,199,132,.2);color:var(--transversal);border:1px solid var(--transversal)}
+.popup-tipo.other{background:rgba(144,164,174,.2);color:var(--other);border:1px solid var(--other)}
+.popup-row{font-size:12px;color:var(--muted);margin-bottom:2px}
+.popup-row b{color:var(--text)}
+
+/* Leaflet dark overrides */
+.leaflet-bar a{background:var(--card)!important;color:var(--text)!important;border-color:var(--border)!important}
+.leaflet-bar a:hover{background:var(--border)!important}
+.leaflet-control-attribution{background:rgba(15,25,35,.7)!important;color:var(--muted)!important;font-size:10px!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(232,125,43,.2)!important}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:rgba(232,125,43,.6)!important;color:#fff!important;font-weight:700}
+
+/* MOBILE adjustments */
+@media(max-width:500px){
+  #searchbar{flex-wrap:wrap}
+  #addr-input{min-width:100%;order:1}
+  #radius-wrap{order:2}
+  #search-btn{order:3}
+  #installBtn{order:4}
+  #map{top:calc(var(--header-h) + 108px)}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div id="loading-msg">Cargando equipamiento…</div>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+  <svg id="header-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="6" fill="#0f1923"/>
+    <path d="M16 4L6 10v12l10 6 10-6V10L16 4z" fill="none" stroke="#E87D2B" stroke-width="1.5"/>
+    <path d="M16 8l-7 4v8l7 4 7-4v-8l-7-4z" fill="#E87D2B" opacity=".3"/>
+    <circle cx="16" cy="16" r="3" fill="#E87D2B"/>
+    <path d="M16 13v-5M16 24v-5M11 15l-4.5-2.5M21 17l4.5 2.5M11 17l-4.5 2.5M21 15l4.5-2.5" stroke="#E87D2B" stroke-width="1.2"/>
+  </svg>
+  <div id="header-title">AUTOTROL · <span>Alumbrado</span></div>
+  <div id="count-badge">0 equipos</div>
+  <button id="installBtn" onclick="pwaDeferredPrompt&&pwaDeferredPrompt.prompt()">⬇ Instalar</button>
+</div>
+
+<!-- SEARCH BAR -->
+<div id="searchbar">
+  <input id="addr-input" type="text" placeholder="Calle y altura (ej: SALVAT 2800)" autocomplete="off"
+         autocorrect="off" autocapitalize="words" spellcheck="false">
+  <div id="radius-wrap">
+    <label for="radius-input">Radio</label>
+    <input id="radius-input" type="number" id="radius-input" value="1000" min="50" max="10000" step="50">
+    <span>m</span>
+  </div>
+  <button id="search-btn" onclick="buscar()">Buscar</button>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- TOAST -->
+<div id="toast" id="toast"></div>
+
+<!-- LEGEND -->
+<div id="legend">
+  <div class="leg-row"><div class="leg-dot" style="background:var(--lampara)"></div>Lámpara</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--columna)"></div>Columna</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--transversal)"></div>Transversal</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--other)"></div>Otro</div>
+</div>
+
+<!-- iOS INSTALL BANNER -->
+<div id="iosBanner">
+  <span class="ios-close" onclick="this.parentElement.style.display='none'">✕</span>
+  Para instalar: toca <b>Compartir</b> → <b>"Agregar a pantalla de inicio"</b>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+'use strict';
+
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+const SHEET_ID  = '1axiovMoPXFwQ-FFHBJ-xR4XR7hE_IYVMkt0EcJhiDYs';
+const GID       = '130891161';
+const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+const CITY_HINT = 'Rosario, Santa Fe, Argentina';
+const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
+const CACHE_KEY = 'autotrol_alumbrado_data_v1';
+const CACHE_TS  = 'autotrol_alumbrado_ts_v1';
+const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 horas
+
+// Columnas (0-indexed): A=0,B=1,C=2,H=7,I=8,U=20,V=21
+const COL = { serie:0, tipo:1, clasif:2, calle:7, altura:8, lat:20, lon:21 };
+
+// ── ESTADO ─────────────────────────────────────────────────────────────────
+let datos = [];          // array de objetos
+let map, clusterLayer, radiusCircle;
+let pwaDeferredPrompt = null;
+
+// ── PWA EVENTS ─────────────────────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  pwaDeferredPrompt = e;
+  document.getElementById('installBtn').classList.add('visible');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBtn').classList.remove('visible');
+});
+
+// iOS banner
+(function(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = navigator.standalone;
+  if(isIOS && !isStandalone && !localStorage.getItem('autotrol_ios_banner_shown')){
+    document.getElementById('iosBanner').style.display = 'block';
+    localStorage.setItem('autotrol_ios_banner_shown','1');
+  }
+})();
+
+// Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./alumbrado-sw.js').catch(()=>{});
+}
+
+// ── MAP INIT ───────────────────────────────────────────────────────────────
+function initMap(){
+  map = L.map('map',{
+    center:[-32.883,-60.723],
+    zoom:14,
+    zoomControl:true,
+    preferCanvas:true
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',
+    maxZoom:19
+  }).addTo(map);
+
+  // Filtro oscuro para tiles
+  const mapEl = document.querySelector('#map .leaflet-tile-pane');
+  if(mapEl) mapEl.style.cssText='filter:invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.88) saturate(0.4)';
+
+  clusterLayer = L.markerClusterGroup({
+    maxClusterRadius:50,
+    spiderfyOnMaxZoom:true,
+    showCoverageOnHover:false,
+    zoomToBoundsOnClick:true
+  });
+  map.addLayer(clusterLayer);
+}
+
+// ── CSV PARSER ─────────────────────────────────────────────────────────────
+function parseRow(row){
+  const cols=[];
+  let inQ=false, cur='';
+  for(let i=0;i<row.length;i++){
+    const c=row[i];
+    if(c==='"'){ inQ=!inQ; }
+    else if(c===','&&!inQ){ cols.push(cur); cur=''; }
+    else cur+=c;
+  }
+  cols.push(cur);
+  return cols;
+}
+
+function parseCSV(text){
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  for(let i=1;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(!line) continue;
+    const cols=parseRow(line);
+    const lat=parseFloat(cols[COL.lat]);
+    const lon=parseFloat(cols[COL.lon]);
+    if(isNaN(lat)||isNaN(lon)) continue;
+    result.push({
+      serie: cols[COL.serie]||'',
+      tipo:  cols[COL.tipo]||'',
+      clasif:cols[COL.clasif]||'',
+      calle: (cols[COL.calle]||'').trim().toUpperCase(),
+      altura:(cols[COL.altura]||'').trim(),
+      lat, lon
+    });
+  }
+  return result;
+}
+
+// ── DATA LOADING ───────────────────────────────────────────────────────────
+async function cargarDatos(){
+  setLoading(true,'Cargando equipamiento…');
+
+  // Intentar caché localStorage
+  try{
+    const ts = localStorage.getItem(CACHE_TS);
+    const cached = localStorage.getItem(CACHE_KEY);
+    if(ts && cached && (Date.now()-parseInt(ts)) < CACHE_TTL){
+      datos = JSON.parse(cached);
+      setLoading(false);
+      toast(`${datos.length.toLocaleString()} equipos cargados (caché)`);
+      return;
+    }
+  }catch(e){}
+
+  // Fetch desde Google Sheets
+  try{
+    setLoading(true,'Descargando datos del servidor…');
+    const resp = await fetch(CSV_URL);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text = await resp.text();
+    setLoading(true,'Procesando datos…');
+    datos = parseCSV(text);
+
+    // Guardar en caché
+    try{
+      localStorage.setItem(CACHE_KEY, JSON.stringify(datos));
+      localStorage.setItem(CACHE_TS, Date.now().toString());
+    }catch(e){ /* localStorage lleno, sin caché */ }
+
+    setLoading(false);
+    toast(`${datos.length.toLocaleString()} equipos disponibles`);
+  }catch(err){
+    // Sin conexión, intentar caché expirada
+    try{
+      const cached = localStorage.getItem(CACHE_KEY);
+      if(cached){
+        datos = JSON.parse(cached);
+        setLoading(false);
+        toast('Usando datos en caché (sin conexión)');
+        return;
+      }
+    }catch(e2){}
+    setLoading(false);
+    toast('Error al cargar datos. Verifique conexión.');
+  }
+}
+
+// ── GEOCODIFICACIÓN ────────────────────────────────────────────────────────
+async function geocodificar(addr){
+  const q = encodeURIComponent(`${addr}, ${CITY_HINT}`);
+  const url = `${NOMINATIM}?q=${q}&format=json&limit=1&accept-language=es`;
+  const resp = await fetch(url, {headers:{'Accept-Language':'es'}});
+  const arr = await resp.json();
+  if(!arr.length) throw new Error('No se encontró la dirección');
+  return { lat:parseFloat(arr[0].lat), lon:parseFloat(arr[0].lon), display:arr[0].display_name };
+}
+
+// ── DISTANCIA (Haversine) ───────────────────────────────────────────────────
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371000;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 +
+          Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ── MARCADORES ────────────────────────────────────────────────────────────
+function tipoClass(tipo){
+  const t=tipo.toLowerCase();
+  if(t.includes('lámpara')||t.includes('lampara')) return 'lampara';
+  if(t.includes('columna')) return 'columna';
+  if(t.includes('transversal')) return 'transversal';
+  return 'other';
+}
+
+function tipoColor(tipo){
+  const c=tipoClass(tipo);
+  return c==='lampara'?'#FFD166':c==='columna'?'#4FC3F7':c==='transversal'?'#81C784':'#90A4AE';
+}
+
+function makeIcon(tipo){
+  const color=tipoColor(tipo);
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+    <circle cx="7" cy="7" r="6" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+  </svg>`;
+  return L.divIcon({html:svg,iconSize:[14,14],iconAnchor:[7,7],className:'',popupAnchor:[0,-7]});
+}
+
+function makePopup(d){
+  const tc=tipoClass(d.tipo);
+  return `<div class="popup-body">
+    <div class="popup-serie">Nº ${d.serie}</div>
+    <span class="popup-tipo ${tc}">${d.tipo}</span>
+    ${d.clasif?`<div class="popup-row"><b>Clasificación:</b> ${d.clasif}</div>`:''}
+    <div class="popup-row"><b>Ubicación:</b> ${d.calle} ${d.altura}</div>
+    <div class="popup-row"><b>Coord:</b> ${d.lat.toFixed(6)}, ${d.lon.toFixed(6)}</div>
+  </div>`;
+}
+
+// ── BÚSQUEDA PRINCIPAL ─────────────────────────────────────────────────────
+async function buscar(){
+  const addr = document.getElementById('addr-input').value.trim();
+  const radio = parseInt(document.getElementById('radius-input').value)||1000;
+
+  if(!addr){ toast('Ingresá una dirección para buscar'); return; }
+  if(!datos.length){ toast('Los datos aún se están cargando…'); return; }
+
+  const btn=document.getElementById('search-btn');
+  btn.textContent='Buscando…'; btn.disabled=true; btn.classList.add('loading');
+
+  try{
+    const geo = await geocodificar(addr);
+
+    // Filtrar por radio
+    const dentro = datos.filter(d => haversine(geo.lat,geo.lon,d.lat,d.lon) <= radio);
+
+    // Limpiar capa
+    clusterLayer.clearLayers();
+    if(radiusCircle){ map.removeLayer(radiusCircle); radiusCircle=null; }
+
+    // Círculo de radio
+    radiusCircle = L.circle([geo.lat,geo.lon],{
+      radius: radio,
+      color: '#E87D2B', weight:1.5,
+      fillColor:'#E87D2B', fillOpacity:0.06
+    }).addTo(map);
+
+    // Marcadores
+    const markers = dentro.map(d => {
+      const m = L.marker([d.lat,d.lon],{icon:makeIcon(d.tipo)});
+      m.bindPopup(makePopup(d),{className:'autotrol-popup',maxWidth:240});
+      return m;
+    });
+    clusterLayer.addLayers(markers);
+
+    // Mover mapa
+    map.setView([geo.lat,geo.lon], radio<=300?17:radio<=600?16:radio<=1500?15:14);
+
+    // Badge
+    document.getElementById('count-badge').textContent=
+      `${dentro.length.toLocaleString()} equipo${dentro.length!==1?'s':''}`;
+
+    toast(`${dentro.length} equipos en ${radio} m de "${addr.split(',')[0]}"`);
+  }catch(err){
+    toast(err.message||'Error al buscar dirección');
+  }finally{
+    btn.textContent='Buscar'; btn.disabled=false; btn.classList.remove('loading');
+  }
+}
+
+// Enter en el input
+document.getElementById('addr-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter') buscar();
+});
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function setLoading(show,msg){
+  const el=document.getElementById('loading');
+  el.classList.toggle('hidden',!show);
+  if(msg) document.getElementById('loading-msg').textContent=msg;
+}
+
+let toastTimer=null;
+function toast(msg,ms=3000){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+// Corregir altura del mapa al redimensionar
+function adjustMap(){
+  const sb=document.getElementById('searchbar');
+  const sbH=sb.getBoundingClientRect().height;
+  document.getElementById('map').style.top=(56+sbH)+'px';
+}
+window.addEventListener('resize',adjustMap);
+adjustMap();
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+initMap();
+cargarDatos();
+</script>
+</body>
+</html>
