@@ -163,6 +163,31 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 #installBtn.visible{display:block}
 #installBtn:hover{background:var(--orange-dim)}
 
+/* UPLOAD BUTTON */
+#uploadBtn{
+  height:38px;padding:0 12px;
+  background:transparent;border:1px solid var(--border);
+  color:var(--muted);font-size:12px;font-weight:700;
+  border-radius:var(--radius);cursor:pointer;white-space:nowrap;
+  transition:border-color .2s,color .2s;
+  display:flex;align-items:center;gap:5px;
+}
+#uploadBtn:hover{border-color:var(--orange);color:var(--orange)}
+#uploadBtn.active{border-color:var(--orange);color:var(--orange);background:var(--orange-dim)}
+
+/* ERROR BANNER */
+#errorBanner{
+  display:none;position:fixed;
+  top:calc(var(--header-h) + var(--search-h) + 8px);
+  left:10px;right:10px;
+  background:var(--card);border:1px solid #c0392b;
+  border-radius:var(--radius);padding:10px 14px;
+  z-index:1500;font-size:13px;color:var(--text);
+  line-height:1.5;
+}
+#errorBanner b{color:#e74c3c}
+#errorBanner .close-banner{float:right;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+
 /* IOS BANNER */
 #iosBanner{
   display:none;position:fixed;bottom:70px;left:10px;right:10px;
@@ -243,6 +268,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     <span>m</span>
   </div>
   <button id="search-btn" onclick="buscar()">Buscar</button>
+  <button id="uploadBtn" onclick="document.getElementById('file-input').click()" title="Cargar archivo CSV/TXT">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zm-5 11a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H3z"/></svg>
+    Cargar archivo
+  </button>
+  <input type="file" id="file-input" accept=".csv,.txt" style="display:none" onchange="cargarDesdeArchivo(this)">
 </div>
 
 <!-- MAP -->
@@ -259,6 +289,13 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   <div class="leg-row"><div class="leg-dot" style="background:var(--other)"></div>Otro</div>
 </div>
 
+<!-- ERROR BANNER -->
+<div id="errorBanner">
+  <span class="close-banner" onclick="this.parentElement.style.display='none'">✕</span>
+  <b>No se pudo conectar con Google Sheets.</b><br>
+  Descargá la planilla como CSV y usá el botón <b>Cargar archivo</b> en la barra de búsqueda.
+</div>
+
 <!-- iOS INSTALL BANNER -->
 <div id="iosBanner">
   <span class="ios-close" onclick="this.parentElement.style.display='none'">✕</span>
@@ -273,7 +310,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 const SHEET_ID  = '1axiovMoPXFwQ-FFHBJ-xR4XR7hE_IYVMkt0EcJhiDYs';
 const GID       = '130891161';
-const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+// Dos URLs alternativas (la primera es la estándar, la segunda usa gviz con mejor CORS)
+const CSV_URLS  = [
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`,
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`
+];
 const CITY_HINT = 'Rosario, Santa Fe, Argentina';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 const CACHE_KEY = 'autotrol_alumbrado_data_v2';
@@ -393,37 +434,74 @@ function initMap(){
 }
 
 // ── CSV PARSER ─────────────────────────────────────────────────────────────
-function parseRow(row){
+function parseRow(row, sep){
   const cols=[];
   let inQ=false, cur='';
   for(let i=0;i<row.length;i++){
     const c=row[i];
     if(c==='"'){ inQ=!inQ; }
-    else if(c===','&&!inQ){ cols.push(cur); cur=''; }
+    else if(c===sep&&!inQ){ cols.push(cur); cur=''; }
     else cur+=c;
   }
   cols.push(cur);
   return cols;
 }
 
+// Detecta si el CSV usa coma o punto y coma como separador
+function detectSep(firstLine){
+  const commas = (firstLine.match(/,/g)||[]).length;
+  const semis  = (firstLine.match(/;/g)||[]).length;
+  return semis > commas ? ';' : ',';
+}
+
+// Normaliza número: reemplaza coma decimal por punto si hace falta
+function parseCoord(s){
+  if(!s) return NaN;
+  // Si tiene coma pero no punto, es separador decimal europeo
+  const cleaned = s.trim().replace(',','.');
+  return parseFloat(cleaned);
+}
+
 function parseCSV(text){
   const lines = text.split(/\r?\n/);
+  if(lines.length < 2) return [];
+
+  // Detectar separador usando la primera línea (header)
+  const sep = detectSep(lines[0]);
+
+  // Auto-detectar columnas por nombre de cabecera
+  const headers = parseRow(lines[0], sep).map(h=>h.replace(/"/g,'').trim().toLowerCase());
+  let colX = headers.findIndex(h=>h.includes('coordenada x'));
+  let colY = headers.findIndex(h=>h.includes('coordenada y'));
+  // Fallback a índices fijos si no se encuentran los headers
+  if(colX < 0) colX = COL.gkX;
+  if(colY < 0) colY = COL.gkY;
+
+  const colSerie  = headers.findIndex(h=>h.includes('serie'))   >= 0 ? headers.findIndex(h=>h.includes('serie'))   : COL.serie;
+  const colTipo   = headers.findIndex(h=>h==='tipo')             >= 0 ? headers.findIndex(h=>h==='tipo')             : COL.tipo;
+  const colClasif = headers.findIndex(h=>h.includes('clasif'))  >= 0 ? headers.findIndex(h=>h.includes('clasif'))  : COL.clasif;
+  const colCalle  = headers.findIndex(h=>h.includes('calle'))   >= 0 ? headers.findIndex(h=>h.includes('calle'))   : COL.calle;
+  const colAltura = headers.findIndex(h=>h.includes('altura'))  >= 0 ? headers.findIndex(h=>h.includes('altura'))  : COL.altura;
+
   const result = [];
   for(let i=1;i<lines.length;i++){
     const line=lines[i].trim();
     if(!line) continue;
-    const cols=parseRow(line);
-    const gkX=parseFloat(cols[COL.gkX]);
-    const gkY=parseFloat(cols[COL.gkY]);
+    const cols=parseRow(line, sep);
+    const gkX=parseCoord(cols[colX]);
+    const gkY=parseCoord(cols[colY]);
     if(isNaN(gkX)||isNaN(gkY)) continue;
+    if(gkX < 4000000 || gkX > 7000000) continue; // rango esperado Gauss-Krüger X
+    if(gkY < 4000000 || gkY > 8000000) continue; // rango esperado Gauss-Krüger Y
     const {lat,lon} = gkToLatLon(gkX, gkY);
     if(isNaN(lat)||isNaN(lon)) continue;
+    if(lat < -55 || lat > -20 || lon < -75 || lon > -50) continue; // Argentina
     result.push({
-      serie: cols[COL.serie]||'',
-      tipo:  cols[COL.tipo]||'',
-      clasif:cols[COL.clasif]||'',
-      calle: (cols[COL.calle]||'').trim().toUpperCase(),
-      altura:(cols[COL.altura]||'').trim(),
+      serie: (cols[colSerie]||'').replace(/"/g,''),
+      tipo:  (cols[colTipo]||'').replace(/"/g,''),
+      clasif:(cols[colClasif]||'').replace(/"/g,''),
+      calle: (cols[colCalle]||'').replace(/"/g,'').trim().toUpperCase(),
+      altura:(cols[colAltura]||'').replace(/"/g,'').trim(),
       lat, lon
     });
   }
@@ -434,49 +512,113 @@ function parseCSV(text){
 async function cargarDatos(){
   setLoading(true,'Cargando equipamiento…');
 
-  // Intentar caché localStorage
+  // 1. Intentar caché localStorage
   try{
     const ts = localStorage.getItem(CACHE_TS);
     const cached = localStorage.getItem(CACHE_KEY);
     if(ts && cached && (Date.now()-parseInt(ts)) < CACHE_TTL){
       datos = JSON.parse(cached);
-      setLoading(false);
-      toast(`${datos.length.toLocaleString()} equipos cargados (caché)`);
-      return;
+      if(datos.length > 0){
+        setLoading(false);
+        actualizarBadge();
+        toast(`${datos.length.toLocaleString()} equipos cargados (caché)`);
+        return;
+      }
     }
   }catch(e){}
 
-  // Fetch desde Google Sheets
+  // 2. Intentar fetch desde Google Sheets (dos URLs)
+  for(let i=0; i<CSV_URLS.length; i++){
+    try{
+      setLoading(true, i===0 ? 'Descargando datos…' : 'Reintentando con URL alternativa…');
+      const resp = await fetch(CSV_URLS[i]);
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      const text = await resp.text();
+      // Verificar que sea CSV real (no HTML de error de Google)
+      if(text.trim().startsWith('<!')) throw new Error('Respuesta HTML (requiere acceso)');
+      setLoading(true,'Procesando datos…');
+      const parsed = parseCSV(text);
+      if(parsed.length === 0) throw new Error('Sin datos válidos');
+
+      datos = parsed;
+      try{
+        localStorage.setItem(CACHE_KEY, JSON.stringify(datos));
+        localStorage.setItem(CACHE_TS, Date.now().toString());
+      }catch(e){}
+
+      setLoading(false);
+      actualizarBadge();
+      toast(`${datos.length.toLocaleString()} equipos disponibles`);
+      return;
+    }catch(err){
+      // continuar con siguiente URL
+    }
+  }
+
+  // 3. Sin conexión: intentar caché expirada
   try{
-    setLoading(true,'Descargando datos del servidor…');
-    const resp = await fetch(CSV_URL);
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const text = await resp.text();
-    setLoading(true,'Procesando datos…');
-    datos = parseCSV(text);
-
-    // Guardar en caché
-    try{
-      localStorage.setItem(CACHE_KEY, JSON.stringify(datos));
-      localStorage.setItem(CACHE_TS, Date.now().toString());
-    }catch(e){ /* localStorage lleno, sin caché */ }
-
-    setLoading(false);
-    toast(`${datos.length.toLocaleString()} equipos disponibles`);
-  }catch(err){
-    // Sin conexión, intentar caché expirada
-    try{
-      const cached = localStorage.getItem(CACHE_KEY);
-      if(cached){
-        datos = JSON.parse(cached);
+    const cached = localStorage.getItem(CACHE_KEY);
+    if(cached){
+      const parsed = JSON.parse(cached);
+      if(parsed.length > 0){
+        datos = parsed;
         setLoading(false);
+        actualizarBadge();
         toast('Usando datos en caché (sin conexión)');
         return;
       }
-    }catch(e2){}
+    }
+  }catch(e){}
+
+  // 4. Todo falló → mostrar banner de carga manual
+  setLoading(false);
+  document.getElementById('errorBanner').style.display='block';
+  document.getElementById('uploadBtn').classList.add('active');
+  toast('No se pudo descargar. Usá el botón "Cargar archivo".', 6000);
+}
+
+// ── CARGA DESDE ARCHIVO LOCAL ──────────────────────────────────────────────
+function cargarDesdeArchivo(input){
+  const file = input.files[0];
+  if(!file) return;
+  setLoading(true,'Leyendo archivo…');
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      setLoading(true,'Procesando datos…');
+      const parsed = parseCSV(e.target.result);
+      if(parsed.length === 0){
+        setLoading(false);
+        toast('No se encontraron coordenadas válidas en el archivo.');
+        return;
+      }
+      datos = parsed;
+      try{
+        localStorage.setItem(CACHE_KEY, JSON.stringify(datos));
+        localStorage.setItem(CACHE_TS, Date.now().toString());
+      }catch(er){}
+      setLoading(false);
+      actualizarBadge();
+      document.getElementById('errorBanner').style.display='none';
+      document.getElementById('uploadBtn').classList.add('active');
+      toast(`✓ ${datos.length.toLocaleString()} equipos cargados desde archivo`);
+    }catch(err){
+      setLoading(false);
+      toast('Error al leer el archivo: '+err.message);
+    }
+  };
+  reader.onerror = function(){
     setLoading(false);
-    toast('Error al cargar datos. Verifique conexión.');
-  }
+    toast('Error al leer el archivo.');
+  };
+  reader.readAsText(file, 'UTF-8');
+  // Limpiar input para permitir re-carga del mismo archivo
+  input.value='';
+}
+
+function actualizarBadge(){
+  const el = document.getElementById('count-badge');
+  if(datos.length > 0) el.textContent = `${datos.length.toLocaleString()} equipos`;
 }
 
 // ── GEOCODIFICACIÓN ────────────────────────────────────────────────────────
@@ -538,7 +680,11 @@ async function buscar(){
   const radio = parseInt(document.getElementById('radius-input').value)||1000;
 
   if(!addr){ toast('Ingresá una dirección para buscar'); return; }
-  if(!datos.length){ toast('Los datos aún se están cargando…'); return; }
+  if(!datos.length){
+    toast('Cargá los datos primero usando el botón "Cargar archivo"');
+    document.getElementById('uploadBtn').classList.add('active');
+    return;
+  }
 
   const btn=document.getElementById('search-btn');
   btn.textContent='Buscando…'; btn.disabled=true; btn.classList.add('loading');
