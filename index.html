@@ -136,7 +136,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .leg-row{display:flex;align-items:center;gap:6px}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(255,255,255,.25)}
 
-/* LOADING OVERLAY */
+/* LOADING OVERLAY (solo para geocodificación) */
 #loading{
   position:fixed;inset:0;
   background:rgba(15,25,35,.85);
@@ -151,6 +151,44 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 #loading-msg{font-size:14px;color:var(--muted)}
+
+/* WELCOME CARD — se muestra cuando no hay datos */
+#welcomeCard{
+  position:fixed;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:28px 24px;z-index:2000;
+  width:min(340px,calc(100vw - 32px));
+  text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.6);
+}
+#welcomeCard.hidden{display:none}
+.wc-icon{font-size:36px;margin-bottom:12px}
+.wc-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.wc-sub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+.wc-upload-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;height:46px;
+  background:var(--orange);border:none;border-radius:var(--radius);
+  color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+  transition:opacity .2s;margin-bottom:12px;
+}
+.wc-upload-btn:hover{opacity:.88}
+.wc-net-btn{
+  background:none;border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--muted);font-size:12px;padding:7px 14px;cursor:pointer;
+  transition:border-color .2s,color .2s;
+}
+.wc-net-btn:hover{border-color:var(--orange);color:var(--orange)}
+.wc-net-btn:disabled{opacity:.4;cursor:default}
+.wc-steps{font-size:11px;color:var(--muted);margin-top:14px;text-align:left;line-height:1.7}
+.wc-steps b{color:var(--text)}
+/* spinner pequeño para "descargando" */
+.wc-spinner{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid var(--border);border-top-color:var(--orange);
+  border-radius:50%;animation:spin .8s linear infinite;
+  vertical-align:middle;margin-right:4px;
+}
 
 /* INSTALL BUTTON */
 #installBtn{
@@ -238,10 +276,28 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 </head>
 <body>
 
-<!-- LOADING -->
-<div id="loading">
+<!-- LOADING (solo geocodificación/búsqueda) -->
+<div id="loading" class="hidden">
   <div class="spinner"></div>
-  <div id="loading-msg">Cargando equipamiento…</div>
+  <div id="loading-msg">Buscando…</div>
+</div>
+
+<!-- WELCOME CARD (se muestra si no hay datos) -->
+<div id="welcomeCard">
+  <div class="wc-icon">🗺️</div>
+  <div class="wc-title">Equipamiento de Alumbrado</div>
+  <div class="wc-sub">Cargá el archivo CSV exportado de la planilla para ver los equipos en el mapa.</div>
+  <button class="wc-upload-btn" onclick="document.getElementById('file-input').click()">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zm-5 11a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H3z"/></svg>
+    Cargar archivo CSV / TXT
+  </button>
+  <button class="wc-net-btn" id="wc-net-btn" onclick="intentarDescargaRed()">
+    Intentar descargar de Google Sheets
+  </button>
+  <div class="wc-steps">
+    <b>Cómo exportar el CSV:</b><br>
+    En Google Sheets → Archivo → Descargar → CSV
+  </div>
 </div>
 
 <!-- HEADER -->
@@ -287,13 +343,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   <div class="leg-row"><div class="leg-dot" style="background:var(--columna)"></div>Columna</div>
   <div class="leg-row"><div class="leg-dot" style="background:var(--transversal)"></div>Transversal</div>
   <div class="leg-row"><div class="leg-dot" style="background:var(--other)"></div>Otro</div>
-</div>
-
-<!-- ERROR BANNER -->
-<div id="errorBanner">
-  <span class="close-banner" onclick="this.parentElement.style.display='none'">✕</span>
-  <b>No se pudo conectar con Google Sheets.</b><br>
-  Descargá la planilla como CSV y usá el botón <b>Cargar archivo</b> en la barra de búsqueda.
 </div>
 
 <!-- iOS INSTALL BANNER -->
@@ -510,33 +559,46 @@ function parseCSV(text){
 
 // ── DATA LOADING ───────────────────────────────────────────────────────────
 async function cargarDatos(){
-  setLoading(true,'Cargando equipamiento…');
-
-  // 1. Intentar caché localStorage
+  // 1. Intentar caché localStorage primero
   try{
     const ts = localStorage.getItem(CACHE_TS);
     const cached = localStorage.getItem(CACHE_KEY);
     if(ts && cached && (Date.now()-parseInt(ts)) < CACHE_TTL){
-      datos = JSON.parse(cached);
-      if(datos.length > 0){
-        setLoading(false);
+      const parsed = JSON.parse(cached);
+      if(parsed.length > 0){
+        datos = parsed;
+        ocultarWelcome();
         actualizarBadge();
-        toast(`${datos.length.toLocaleString()} equipos cargados (caché)`);
+        toast(`${datos.length.toLocaleString()} equipos cargados`);
         return;
       }
     }
   }catch(e){}
 
-  // 2. Intentar fetch desde Google Sheets (dos URLs)
+  // 2. Sin caché válida → mostrar welcome card inmediatamente
+  mostrarWelcome();
+
+  // 3. Intentar red en background (silencioso, con timeout corto)
+  intentarDescargaRed(true);
+}
+
+// Intenta descargar de Google Sheets. silent=true = no muestra mensajes de error al usuario
+async function intentarDescargaRed(silent){
+  const btn = document.getElementById('wc-net-btn');
+  if(!silent){
+    btn.disabled = true;
+    btn.innerHTML = '<span class="wc-spinner"></span>Descargando…';
+  }
+
   for(let i=0; i<CSV_URLS.length; i++){
     try{
-      setLoading(true, i===0 ? 'Descargando datos…' : 'Reintentando con URL alternativa…');
-      const resp = await fetch(CSV_URLS[i]);
+      const ctrl = new AbortController();
+      const tid  = setTimeout(()=>ctrl.abort(), 8000); // 8s timeout
+      const resp = await fetch(CSV_URLS[i], {signal:ctrl.signal});
+      clearTimeout(tid);
       if(!resp.ok) throw new Error('HTTP '+resp.status);
       const text = await resp.text();
-      // Verificar que sea CSV real (no HTML de error de Google)
-      if(text.trim().startsWith('<!')) throw new Error('Respuesta HTML (requiere acceso)');
-      setLoading(true,'Procesando datos…');
+      if(text.trim().startsWith('<!')) throw new Error('Respuesta HTML');
       const parsed = parseCSV(text);
       if(parsed.length === 0) throw new Error('Sin datos válidos');
 
@@ -546,50 +608,34 @@ async function cargarDatos(){
         localStorage.setItem(CACHE_TS, Date.now().toString());
       }catch(e){}
 
-      setLoading(false);
+      ocultarWelcome();
       actualizarBadge();
-      toast(`${datos.length.toLocaleString()} equipos disponibles`);
+      toast(`✓ ${datos.length.toLocaleString()} equipos descargados`);
       return;
     }catch(err){
-      // continuar con siguiente URL
+      // Continuar con siguiente URL
     }
   }
 
-  // 3. Sin conexión: intentar caché expirada
-  try{
-    const cached = localStorage.getItem(CACHE_KEY);
-    if(cached){
-      const parsed = JSON.parse(cached);
-      if(parsed.length > 0){
-        datos = parsed;
-        setLoading(false);
-        actualizarBadge();
-        toast('Usando datos en caché (sin conexión)');
-        return;
-      }
-    }
-  }catch(e){}
-
-  // 4. Todo falló → mostrar banner de carga manual
-  setLoading(false);
-  document.getElementById('errorBanner').style.display='block';
-  document.getElementById('uploadBtn').classList.add('active');
-  toast('No se pudo descargar. Usá el botón "Cargar archivo".', 6000);
+  // Falló la red
+  if(!silent){
+    btn.disabled = false;
+    btn.textContent = 'Intentar descargar de Google Sheets';
+    toast('No se pudo conectar. Verificá que la planilla sea pública.', 5000);
+  }
 }
 
 // ── CARGA DESDE ARCHIVO LOCAL ──────────────────────────────────────────────
 function cargarDesdeArchivo(input){
   const file = input.files[0];
   if(!file) return;
-  setLoading(true,'Leyendo archivo…');
+
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      setLoading(true,'Procesando datos…');
       const parsed = parseCSV(e.target.result);
       if(parsed.length === 0){
-        setLoading(false);
-        toast('No se encontraron coordenadas válidas en el archivo.');
+        toast('No se encontraron coordenadas válidas. Verificá que sean las columnas M y N (Coordenada X/Y).');
         return;
       }
       datos = parsed;
@@ -597,23 +643,25 @@ function cargarDesdeArchivo(input){
         localStorage.setItem(CACHE_KEY, JSON.stringify(datos));
         localStorage.setItem(CACHE_TS, Date.now().toString());
       }catch(er){}
-      setLoading(false);
+      ocultarWelcome();
       actualizarBadge();
-      document.getElementById('errorBanner').style.display='none';
       document.getElementById('uploadBtn').classList.add('active');
       toast(`✓ ${datos.length.toLocaleString()} equipos cargados desde archivo`);
     }catch(err){
-      setLoading(false);
       toast('Error al leer el archivo: '+err.message);
     }
   };
-  reader.onerror = function(){
-    setLoading(false);
-    toast('Error al leer el archivo.');
-  };
+  reader.onerror = ()=>toast('Error al leer el archivo.');
   reader.readAsText(file, 'UTF-8');
-  // Limpiar input para permitir re-carga del mismo archivo
   input.value='';
+}
+
+// ── WELCOME CARD ───────────────────────────────────────────────────────────
+function mostrarWelcome(){
+  document.getElementById('welcomeCard').classList.remove('hidden');
+}
+function ocultarWelcome(){
+  document.getElementById('welcomeCard').classList.add('hidden');
 }
 
 function actualizarBadge(){
@@ -681,8 +729,7 @@ async function buscar(){
 
   if(!addr){ toast('Ingresá una dirección para buscar'); return; }
   if(!datos.length){
-    toast('Cargá los datos primero usando el botón "Cargar archivo"');
-    document.getElementById('uploadBtn').classList.add('active');
+    mostrarWelcome();
     return;
   }
 

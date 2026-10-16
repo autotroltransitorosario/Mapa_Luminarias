@@ -1,5 +1,5 @@
-// AUTOTROL · Equipamiento Alumbrado — Service Worker v1
-const CACHE = 'autotrol-alumbrado-v1';
+// AUTOTROL · Equipamiento Alumbrado — Service Worker v2
+const CACHE = 'autotrol-alumbrado-v2';
 const APP_URLS = ['./alumbrado.html', './'];
 
 self.addEventListener('install', e => {
