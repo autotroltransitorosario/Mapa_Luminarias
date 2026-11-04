@@ -320,6 +320,40 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 @media(max-width:380px){
   #header-siga{font-size:14px}
 }
+
+/* PICK POINT + CLASIFICACIONES */
+#pick-btn{
+  background:transparent;border:1px solid var(--border);color:var(--text,#e8eef5);
+  border-radius:var(--radius);padding:0 10px;height:34px;font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;
+}
+#pick-btn.active{background:#E87D2B;border-color:#E87D2B;color:#fff}
+#map.pick-mode,#map.pick-mode .leaflet-grab{cursor:crosshair !important}
+#clasifPanel{
+  position:fixed;bottom:16px;left:10px;z-index:1000;
+  background:rgba(22,34,47,.95);border:1px solid var(--border);
+  border-radius:var(--radius);padding:8px 10px;font-size:12px;
+  width:210px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:none;
+}
+#clasifPanel.has-data{display:block}
+#clasifPanel h4{
+  font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;user-select:none;
+}
+#clasifPanel.collapsed #clasifList,#clasifPanel.collapsed .cl-actions{display:none}
+#clasifList{max-height:34vh;overflow-y:auto;margin-top:6px}
+.cl-row{display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer;user-select:none}
+.cl-row input{accent-color:#E87D2B;flex-shrink:0}
+.cl-row svg{flex-shrink:0}
+.cl-row .cl-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-row .cl-n{color:var(--muted);font-variant-numeric:tabular-nums}
+.cl-row.zero{opacity:.4}
+.cl-actions{display:flex;gap:6px;margin-top:6px}
+.cl-actions button{flex:1;background:transparent;border:1px solid var(--border);color:inherit;
+  border-radius:4px;font-size:11px;padding:3px 0;cursor:pointer}
+.search-pin{filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+@media(max-width:600px){#clasifPanel{width:170px;bottom:84px}}
 </style>
 </head>
 <body>
@@ -390,6 +424,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     <span>m</span>
   </div>
   <button id="search-btn" onclick="buscar()">Buscar</button>
+  <button id="pick-btn" onclick="togglePick()" title="Tocá el mapa para posicionar el punto de búsqueda">📍 Elegir punto</button>
   <button id="uploadBtn" onclick="document.getElementById('file-input').click()" title="Cargar archivo CSV/TXT">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zm-5 11a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H3z"/></svg>
     Cargar archivo
@@ -438,6 +473,16 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   </label>
 </div>
 
+<!-- CLASIFICACIONES -->
+<div id="clasifPanel">
+  <h4 onclick="this.parentElement.classList.toggle('collapsed')"><span>Clasificación</span><span>▾</span></h4>
+  <div id="clasifList"></div>
+  <div class="cl-actions">
+    <button onclick="setAllClasif(true)">Todas</button>
+    <button onclick="setAllClasif(false)">Ninguna</button>
+  </div>
+</div>
+
 <!-- iOS INSTALL BANNER -->
 <div id="iosBanner">
   <span class="ios-close" onclick="this.parentElement.style.display='none'">✕</span>
@@ -460,7 +505,7 @@ const NOMINATIM   = 'https://nominatim.openstreetmap.org/search';
 const CACHE_KEY   = 'autotrol_alumbrado_data_v3';
 const CACHE_TS    = 'autotrol_alumbrado_ts_v3';
 const CACHE_TTL   = 6 * 60 * 60 * 1000; // 6 horas
-const SW_CACHE    = 'autotrol-alumbrado-v3';
+const SW_CACHE    = 'autotrol-alumbrado-data-v1'; // cache persistente de datos (el SW NO lo borra)
 const DATA_URL    = './alumbrado-data.json';
 
 // Columnas fallback (0-indexed)
@@ -496,7 +541,12 @@ function gkToLatLon(X, Y) {
 
 // ── ESTADO ─────────────────────────────────────────────────────────────────
 let datos = [];
-let map, layers = {}, radiusCircle;
+let map, layers = {}, radiusCircle, searchMarker = null, pickMode = false;
+let ultimo = null;                 // última búsqueda {lat,lon,radio,label,dentro}
+let clasifShape = {};              // clasificación -> forma
+let clasifOculta = new Set();      // clasificaciones desmarcadas
+const SHAPES = ['circle','square','triangle','diamond','hexagon','star','cross','pentagon'];
+let radioTimer = null;
 let pwaDeferredPrompt = null;
 let contadores = {lampara:0, columna:0, tablero:0, transversal:0, other:0};
 
@@ -537,6 +587,7 @@ function initMap(){
   Object.keys(TIPO_COLOR).forEach(tipo=>{
     layers[tipo] = L.layerGroup().addTo(map);
   });
+  map.on('click',onMapClick);
 }
 
 // ── CAPAS / TOGGLE ─────────────────────────────────────────────────────────
@@ -695,6 +746,7 @@ function cargarDesdeArchivo(input){
 function mostrarWelcome(){ document.getElementById('welcomeCard').classList.remove('hidden'); }
 function ocultarWelcome(){ document.getElementById('welcomeCard').classList.add('hidden'); }
 function actualizarBadge(){
+  construirClasificaciones(); if(ultimo) renderResultado();
   if(datos.length>0) document.getElementById('count-badge').textContent=`${datos.length.toLocaleString()} equipos`;
 }
 
@@ -723,21 +775,77 @@ function tipoKey(tipo){
   return 'other';
 }
 
-function makeIcon(tipo){
+function shapeSVG(shape,color,size){
+  const c=size/2, r=c-1.5, sw=1.5;
+  const st=`fill="${color}" stroke="#fff" stroke-width="${sw}" stroke-linejoin="round"`;
+  const pts=(arr)=>arr.map(p=>p.join(',')).join(' ');
+  let el;
+  switch(shape){
+    case 'square':  el=`<rect x="${1.5}" y="${1.5}" width="${size-3}" height="${size-3}" rx="1.5" ${st}/>`;break;
+    case 'triangle':el=`<polygon points="${pts([[c,1.2],[size-1.2,size-2],[1.2,size-2]])}" ${st}/>`;break;
+    case 'diamond': el=`<polygon points="${pts([[c,1],[size-1,c],[c,size-1],[1,c]])}" ${st}/>`;break;
+    case 'hexagon': el=`<polygon points="${pts([0,1,2,3,4,5].map(i=>[c+r*Math.cos(Math.PI/3*i),c+r*Math.sin(Math.PI/3*i)]))}" ${st}/>`;break;
+    case 'star':    el=`<polygon points="${pts([...Array(10).keys()].map(i=>{const rr=i%2?r*0.5:r+1,a=-Math.PI/2+Math.PI/5*i;return [c+rr*Math.cos(a),c+rr*Math.sin(a)];}))}" ${st}/>`;break;
+    case 'cross':   el=`<polygon points="${pts([[5,1],[size-5,1],[size-5,5],[size-1,5],[size-1,size-5],[size-5,size-5],[size-5,size-1],[5,size-1],[5,size-5],[1,size-5],[1,5],[5,5]])}" ${st}/>`;break;
+    case 'pentagon':el=`<polygon points="${pts([0,1,2,3,4].map(i=>[c+r*Math.cos(-Math.PI/2+2*Math.PI/5*i),c+r*Math.sin(-Math.PI/2+2*Math.PI/5*i)+0.5]))}" ${st}/>`;break;
+    default:        el=`<circle cx="${c}" cy="${c}" r="${r}" ${st}/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${el}</svg>`;
+}
+
+function makeIcon(tipo,clasif){
   const color=TIPO_COLOR[tipoKey(tipo)];
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="${color}" stroke="#fff" stroke-width="1.5"/></svg>`;
-  return L.divIcon({html:svg,iconSize:[14,14],iconAnchor:[7,7],className:'',popupAnchor:[0,-7]});
+  const sz=17;
+  return L.divIcon({html:shapeSVG(shapeOf(clasif),color,sz),iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],className:'',popupAnchor:[0,-sz/2]});
 }
 
 function makePopup(d){
   const tk=tipoKey(d.tipo);
   return `<div class="popup-body">
-    <div class="popup-serie">Nº ${d.serie}</div>
-    <span class="popup-tipo ${tk}">${d.tipo||'Sin tipo'}</span>
-    ${d.clasif?`<div class="popup-row"><b>Clasificación:</b> ${d.clasif}</div>`:''}
-    <div class="popup-row"><b>Ubicación:</b> ${d.calle} ${d.altura}</div>
+    <div class="popup-serie">Nº ${esc(d.serie)}</div>
+    <span class="popup-tipo ${tk}">${esc(d.tipo)||'Sin tipo'}</span>
+    <div class="popup-row"><b>Clasificación:</b> ${esc(clasifName(d.clasif))}</div>
+    <div class="popup-row"><b>Ubicación:</b> ${esc(d.calle)} ${esc(d.altura)}</div>
+    <div class="popup-row"><b>A:</b> ${Math.round(d.dist||0)} m del punto</div>
     <div class="popup-row"><b>Coord:</b> ${d.lat.toFixed(6)}, ${d.lon.toFixed(6)}</div>
   </div>`;
+}
+
+// ── CLASIFICACIONES ───────────────────────────────────────────────────────
+const SIN_CLASIF='(Sin clasificar)';
+function clasifName(c){return (c||'').trim()||SIN_CLASIF;}
+function shapeOf(c){return clasifShape[clasifName(c)]||'circle';}
+function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+function construirClasificaciones(){
+  const set=new Set(datos.map(d=>clasifName(d.clasif)));
+  const lista=[...set].sort((a,b)=>a.localeCompare(b,'es'));
+  clasifShape={};
+  lista.forEach((c,i)=>{clasifShape[c]=SHAPES[i%SHAPES.length];});
+  renderClasifPanel(null);
+}
+
+function renderClasifPanel(counts){
+  const panel=document.getElementById('clasifPanel');
+  const names=Object.keys(clasifShape);
+  panel.classList.toggle('has-data',names.length>0);
+  document.getElementById('clasifList').innerHTML=names.map(n=>{
+    const n_=counts?(counts[n]||0):'';
+    return `<label class="cl-row ${counts&&!n_?'zero':''}">
+      <input type="checkbox" data-c="${esc(n)}" ${clasifOculta.has(n)?'':'checked'} onchange="toggleClasif(this)">
+      ${shapeSVG(clasifShape[n],'#c9d3dd',14)}
+      <span class="cl-name" title="${esc(n)}">${esc(n)}</span>
+      <span class="cl-n">${n_}</span></label>`;
+  }).join('');
+}
+
+function toggleClasif(cb){
+  if(cb.checked) clasifOculta.delete(cb.dataset.c); else clasifOculta.add(cb.dataset.c);
+  renderResultado();
+}
+function setAllClasif(on){
+  clasifOculta = on ? new Set() : new Set(Object.keys(clasifShape));
+  renderResultado();
 }
 
 // ── AUTOCOMPLETE ──────────────────────────────────────────────────────────
@@ -843,51 +951,110 @@ document.addEventListener('click', e=>{
 });
 
 // ── BÚSQUEDA ──────────────────────────────────────────────────────────────
+function getRadio(){
+  const r=parseInt(document.getElementById('radius-input').value);
+  return Math.min(Math.max(isNaN(r)?1000:r,10),20000);
+}
+
+// Dibuja (o mueve) el pin arrastrable del punto de búsqueda
+function ponerPin(lat,lon){
+  if(!searchMarker){
+    const icon=L.divIcon({className:'search-pin',iconSize:[28,36],iconAnchor:[14,34],
+      html:'<svg width="28" height="36" viewBox="0 0 28 36"><path d="M14 1C7 1 2 6.3 2 13c0 9 12 21 12 21s12-12 12-21C26 6.3 21 1 14 1z" fill="#E87D2B" stroke="#fff" stroke-width="2"/><circle cx="14" cy="13" r="4.5" fill="#fff"/></svg>'});
+    searchMarker=L.marker([lat,lon],{icon,draggable:true,zIndexOffset:1000}).addTo(map);
+    searchMarker.bindTooltip('Arrastrá para mover',{direction:'top',offset:[0,-30]});
+    searchMarker.on('dragend',()=>{
+      const ll=searchMarker.getLatLng();
+      ejecutarBusqueda(ll.lat,ll.lng,getRadio(),'punto en el mapa',{fit:false});
+    });
+  } else searchMarker.setLatLng([lat,lon]);
+}
+
+// Núcleo: busca en datos (CSV) todos los equipos dentro del radio
+function ejecutarBusqueda(lat,lon,radio,label,opt){
+  opt=opt||{fit:true};
+  if(!datos.length){mostrarWelcome();return;}
+  const dentro=[];
+  for(const d of datos){
+    const dist=haversine(lat,lon,d.lat,d.lon);
+    if(dist<=radio) dentro.push(Object.assign({},d,{dist}));
+  }
+  dentro.sort((a,b)=>a.dist-b.dist);
+  ultimo={lat,lon,radio,label,dentro};
+  ponerPin(lat,lon);
+  if(radiusCircle){map.removeLayer(radiusCircle);radiusCircle=null;}
+  radiusCircle=L.circle([lat,lon],{radius:radio,color:'#E87D2B',weight:1.5,fillColor:'#E87D2B',fillOpacity:0.06,interactive:false}).addTo(map);
+  if(opt.fit) map.fitBounds(radiusCircle.getBounds(),{padding:[20,20],maxZoom:18});
+  renderResultado();
+  toast(`${dentro.length} equipo${dentro.length!==1?'s':''} en ${radio} m de ${label}`);
+}
+
+// Pinta el último resultado respetando filtros de Tipo (capas) y Clasificación
+function renderResultado(){
+  Object.values(layers).forEach(l=>l.clearLayers());
+  contadores={lampara:0,columna:0,tablero:0,transversal:0,other:0};
+  const cCl={};
+  let visibles=0;
+  if(ultimo){
+    for(const d of ultimo.dentro){
+      const cn=clasifName(d.clasif);
+      cCl[cn]=(cCl[cn]||0)+1;
+      if(clasifOculta.has(cn)) continue;
+      const tk=tipoKey(d.tipo);
+      contadores[tk]++; visibles++;
+      const m=L.marker([d.lat,d.lon],{icon:makeIcon(d.tipo,d.clasif)});
+      m.bindPopup(makePopup(d),{className:'autotrol-popup',maxWidth:240});
+      layers[tk].addLayer(m);
+    }
+    document.getElementById('count-badge').textContent=`${visibles.toLocaleString()} de ${ultimo.dentro.length.toLocaleString()} equipos`;
+  }
+  Object.keys(contadores).forEach(k=>{
+    const el=document.getElementById('cnt-'+k); if(el) el.textContent=contadores[k]||'';
+  });
+  renderClasifPanel(ultimo?cCl:null);
+}
+
+// Buscar por dirección (geocodifica y posiciona el punto)
 async function buscar(){
   closeAc();
   const addr=document.getElementById('addr-input').value.trim();
-  const radio=parseInt(document.getElementById('radius-input').value)||1000;
-  if(!addr){toast('Ingresá una dirección para buscar');return;}
+  const radio=getRadio();
+  if(!addr){toast('Ingresá una dirección o tocá "📍 Elegir punto"');return;}
   if(!datos.length){mostrarWelcome();return;}
-
   const btn=document.getElementById('search-btn');
   btn.textContent='Buscando…';btn.disabled=true;btn.classList.add('loading');
-
   try{
     const geo=await geocodificar(addr);
-    const dentro=datos.filter(d=>haversine(geo.lat,geo.lon,d.lat,d.lon)<=radio);
-
-    Object.values(layers).forEach(l=>l.clearLayers());
-    if(radiusCircle){map.removeLayer(radiusCircle);radiusCircle=null;}
-
-    radiusCircle=L.circle([geo.lat,geo.lon],{
-      radius:radio,color:'#E87D2B',weight:1.5,fillColor:'#E87D2B',fillOpacity:0.06
-    }).addTo(map);
-
-    contadores={lampara:0,columna:0,tablero:0,transversal:0,other:0};
-
-    dentro.forEach(d=>{
-      const tk=tipoKey(d.tipo);
-      contadores[tk]++;
-      const m=L.marker([d.lat,d.lon],{icon:makeIcon(d.tipo)});
-      m.bindPopup(makePopup(d),{className:'autotrol-popup',maxWidth:240});
-      layers[tk].addLayer(m);
-    });
-
-    Object.keys(contadores).forEach(k=>{
-      const el=document.getElementById('cnt-'+k);
-      if(el) el.textContent=contadores[k]||'';
-    });
-
-    map.setView([geo.lat,geo.lon],radio<=300?17:radio<=600?16:radio<=1500?15:14);
-    document.getElementById('count-badge').textContent=`${dentro.length.toLocaleString()} equipo${dentro.length!==1?'s':''}`;
-    toast(`${dentro.length} equipos en ${radio} m de "${addr.split(',')[0]}"`);
+    ejecutarBusqueda(geo.lat,geo.lon,radio,`"${addr.split(',')[0]}"`,{fit:true});
   }catch(err){
     toast(err.message||'Error al buscar dirección');
   }finally{
     btn.textContent='Buscar';btn.disabled=false;btn.classList.remove('loading');
   }
 }
+
+// ── ELEGIR PUNTO EN EL MAPA ───────────────────────────────────────────────
+function togglePick(force){
+  pickMode = typeof force==='boolean' ? force : !pickMode;
+  document.getElementById('pick-btn').classList.toggle('active',pickMode);
+  document.getElementById('map').classList.toggle('pick-mode',pickMode);
+  if(pickMode) toast('Tocá el mapa para posicionar el punto de búsqueda');
+}
+function onMapClick(e){
+  if(!pickMode) return;
+  togglePick(false);
+  if(!datos.length){mostrarWelcome();return;}
+  document.getElementById('addr-input').value='';
+  ejecutarBusqueda(e.latlng.lat,e.latlng.lng,getRadio(),'el punto elegido',{fit:false});
+}
+// Cambiar el radio re-busca desde el punto actual
+document.getElementById('radius-input').addEventListener('input',()=>{
+  clearTimeout(radioTimer);
+  radioTimer=setTimeout(()=>{
+    if(ultimo) ejecutarBusqueda(ultimo.lat,ultimo.lon,getRadio(),ultimo.label,{fit:true});
+  },500);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pickMode)togglePick(false);});
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function setLoading(show,msg){
