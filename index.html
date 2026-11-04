@@ -328,7 +328,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   cursor:pointer;white-space:nowrap;
 }
 #pick-btn.active{background:#E87D2B;border-color:#E87D2B;color:#fff}
-#map.pick-mode,#map.pick-mode .leaflet-grab{cursor:crosshair !important}
+#map,#map .leaflet-grab{cursor:crosshair}
+#map .leaflet-dragging .leaflet-grab{cursor:grabbing}
 #clasifPanel{
   position:fixed;bottom:16px;left:10px;z-index:1000;
   background:rgba(22,34,47,.95);border:1px solid var(--border);
@@ -424,7 +425,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     <span>m</span>
   </div>
   <button id="search-btn" onclick="buscar()">Buscar</button>
-  <button id="pick-btn" onclick="togglePick()" title="Tocá el mapa para posicionar el punto de búsqueda">📍 Elegir punto</button>
+  <button id="pick-btn" onclick="toast('Hacé clic en cualquier lugar del mapa para colocar el punto de búsqueda')" title="Hacé clic en el mapa para colocar el punto">📍 Clic en el mapa</button>
   <button id="uploadBtn" onclick="document.getElementById('file-input').click()" title="Cargar archivo CSV/TXT">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zm-5 11a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H3z"/></svg>
     Cargar archivo
@@ -587,6 +588,7 @@ function initMap(){
   Object.keys(TIPO_COLOR).forEach(tipo=>{
     layers[tipo] = L.layerGroup().addTo(map);
   });
+  map.on('popupclose',()=>{lastPopupClose=Date.now();});
   map.on('click',onMapClick);
 }
 
@@ -1040,9 +1042,10 @@ function togglePick(force){
   document.getElementById('map').classList.toggle('pick-mode',pickMode);
   if(pickMode) toast('Tocá el mapa para posicionar el punto de búsqueda');
 }
+let lastPopupClose=0;
 function onMapClick(e){
-  if(!pickMode) return;
-  togglePick(false);
+  // Un clic en el mapa posiciona el punto directamente (sin activar ningún modo)
+  if(Date.now()-lastPopupClose<250) return;   // el clic que solo cierra un popup no mueve el punto
   if(!datos.length){mostrarWelcome();return;}
   document.getElementById('addr-input').value='';
   ejecutarBusqueda(e.latlng.lat,e.latlng.lng,getRadio(),'el punto elegido',{fit:false});
@@ -1054,7 +1057,7 @@ document.getElementById('radius-input').addEventListener('input',()=>{
     if(ultimo) ejecutarBusqueda(ultimo.lat,ultimo.lon,getRadio(),ultimo.label,{fit:true});
   },500);
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pickMode)togglePick(false);});
+
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function setLoading(show,msg){
