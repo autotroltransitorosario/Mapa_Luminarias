@@ -197,8 +197,14 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 #toast.show{opacity:1}
 
 /* LAYER PANEL */
+#sidePanels{
+  position:fixed;top:140px;right:10px;z-index:1000;
+  display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+  max-height:calc(100vh - 150px);pointer-events:none;
+}
+#sidePanels>*{pointer-events:auto}
 #layerPanel{
-  position:fixed;bottom:16px;right:10px;
+  position:relative;width:190px;
   background:rgba(22,34,47,.95);border:1px solid var(--border);
   border-radius:var(--radius);padding:10px 12px;z-index:1000;
   font-size:12px;min-width:140px;
@@ -242,6 +248,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 }
 #loading.hidden{display:none}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+#loading.big .spinner{width:76px;height:76px;border-width:6px}
+#loading-sub{font-size:12px;color:var(--muted);min-height:16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 #loading-msg{font-size:14px;color:var(--muted)}
 
@@ -331,10 +339,10 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 #map,#map .leaflet-grab{cursor:crosshair}
 #map .leaflet-dragging .leaflet-grab{cursor:grabbing}
 #clasifPanel{
-  position:fixed;bottom:16px;left:10px;z-index:1000;
+  position:relative;
   background:rgba(22,34,47,.95);border:1px solid var(--border);
   border-radius:var(--radius);padding:8px 10px;font-size:12px;
-  width:210px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:none;
+  width:190px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:none;
 }
 #clasifPanel.has-data{display:block}
 #clasifPanel h4{
@@ -354,7 +362,24 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .cl-actions button{flex:1;background:transparent;border:1px solid var(--border);color:inherit;
   border-radius:4px;font-size:11px;padding:3px 0;cursor:pointer}
 .search-pin{filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
-@media(max-width:600px){#clasifPanel{width:170px;bottom:84px}}
+#layerPanel h4{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;margin-bottom:8px}
+#layerPanel.collapsed h4{margin-bottom:0}
+#layerPanel.collapsed .layer-row{display:none}
+.arrow{display:inline-block;transition:transform .2s;font-size:12px}
+.collapsed .arrow{transform:rotate(90deg)}
+#layerPanel h4:hover,#clasifPanel h4:hover{color:var(--text)}
+#clasifPanel.collapsed h4{margin:0}
+#clasifList{max-height:calc(100vh - 330px)}
+/* MI UBICACIÓN */
+#locBtn{
+  position:fixed;left:10px;bottom:26px;z-index:1000;width:40px;height:40px;border-radius:50%;
+  background:var(--card);border:1px solid var(--border);color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.4)
+}
+#locBtn.on{color:#4C9AFF;border-color:#4C9AFF}
+#locBtn.busy svg{animation:spin 1s linear infinite}
+.me-dot{width:18px;height:18px;border-radius:50%;background:#4C9AFF;border:3px solid #fff;box-shadow:0 0 0 0 rgba(76,154,255,.6);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 14px rgba(76,154,255,0)}100%{box-shadow:0 0 0 0 rgba(76,154,255,0)}}
 </style>
 </head>
 <body>
@@ -363,6 +388,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 <div id="loading" class="hidden">
   <div class="spinner"></div>
   <div id="loading-msg">Buscando…</div>
+  <div id="loading-sub"></div>
 </div>
 
 <!-- WELCOME CARD -->
@@ -440,8 +466,9 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 <div id="toast"></div>
 
 <!-- LAYER PANEL -->
-<div id="layerPanel">
-  <h4>Capas</h4>
+<div id="sidePanels">
+<div id="layerPanel" class="collapsed">
+  <h4 onclick="this.parentElement.classList.toggle('collapsed')"><span>Capas</span><span class="arrow">▾</span></h4>
   <label class="layer-row" id="lr-lampara">
     <input type="checkbox" checked data-tipo="lampara" style="color:var(--c-lampara)" onchange="toggleCapa(this)">
     <span class="layer-dot" style="background:var(--c-lampara)"></span>
@@ -475,14 +502,18 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 </div>
 
 <!-- CLASIFICACIONES -->
-<div id="clasifPanel">
-  <h4 onclick="this.parentElement.classList.toggle('collapsed')"><span>Clasificación</span><span>▾</span></h4>
+<div id="clasifPanel" class="collapsed">
+  <h4 onclick="this.parentElement.classList.toggle('collapsed')"><span>Clasificación</span><span class="arrow">▾</span></h4>
   <div id="clasifList"></div>
   <div class="cl-actions">
     <button onclick="setAllClasif(true)">Todas</button>
     <button onclick="setAllClasif(false)">Ninguna</button>
   </div>
 </div>
+
+</div>
+
+<button id="locBtn" onclick="miUbicacion()" title="Mostrar mi ubicación"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg></button>
 
 <!-- iOS INSTALL BANNER -->
 <div id="iosBanner">
@@ -695,34 +726,60 @@ async function cargarDatos(){
     toast(`${datos.length.toLocaleString()} equipos cargados`);
     return;
   }
+  // Primera vez (o sin datos guardados): descarga automática con anillo de progreso
   mostrarWelcome();
   intentarDescargaRed(true);
+}
+
+async function leerCSVconProgreso(resp){
+  if(!resp.body||!resp.body.getReader) return await resp.text();
+  const reader=resp.body.getReader(), dec=new TextDecoder('utf-8');
+  let text='', bytes=0;
+  const sub=document.getElementById('loading-sub');
+  for(;;){
+    const {done,value}=await reader.read();
+    if(done) break;
+    bytes+=value.length;
+    text+=dec.decode(value,{stream:true});
+    sub.textContent=(bytes/1048576).toFixed(2)+' MB descargados';
+  }
+  return text+dec.decode();
 }
 
 async function intentarDescargaRed(silent){
   const btn=document.getElementById('wc-net-btn');
   if(!silent){btn.disabled=true;btn.innerHTML='<span class="wc-spinner"></span>Descargando…';}
-  for(let i=0;i<CSV_URLS.length;i++){
-    try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),8000);
-      const resp=await fetch(CSV_URLS[i],{signal:ctrl.signal});
-      clearTimeout(tid);
-      if(!resp.ok) throw new Error('HTTP '+resp.status);
-      const text=await resp.text();
-      if(text.trim().startsWith('<!')) throw new Error('HTML response');
-      const parsed=parseCSV(text);
-      if(parsed.length===0) throw new Error('Sin datos');
-      datos=parsed;
-      await guardarEnCache(datos);
-      ocultarWelcome(); actualizarBadge();
-      toast(`✓ ${datos.length.toLocaleString()} equipos descargados`);
-      return;
-    }catch(e){}
-  }
-  if(!silent){
-    btn.disabled=false; btn.textContent='Intentar descargar de Google Sheets';
-    toast('No se pudo conectar. Verificá que la planilla sea pública.',5000);
+  document.getElementById('loading').classList.add('big');
+  document.getElementById('loading-sub').textContent='';
+  setLoading(true,'Cargando equipos de Google Sheets…');
+  try{
+    for(let i=0;i<CSV_URLS.length;i++){
+      try{
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),45000);
+        const resp=await fetch(CSV_URLS[i],{signal:ctrl.signal});
+        if(!resp.ok){clearTimeout(tid);throw new Error('HTTP '+resp.status);}
+        const text=await leerCSVconProgreso(resp);
+        clearTimeout(tid);
+        if(text.trim().startsWith('<!')) throw new Error('HTML response');
+        document.getElementById('loading-msg').textContent='Procesando datos…';
+        await new Promise(r=>setTimeout(r,30));   // deja pintar el anillo
+        const parsed=parseCSV(text);
+        if(parsed.length===0) throw new Error('Sin datos');
+        datos=parsed;
+        document.getElementById('loading-msg').textContent='Guardando en el dispositivo…';
+        await guardarEnCache(datos);
+        ocultarWelcome(); actualizarBadge();
+        toast(`✓ ${datos.length.toLocaleString()} equipos descargados y guardados`);
+        return;
+      }catch(e){}
+    }
+    if(!silent) toast('No se pudo conectar. Verificá que la planilla sea pública.',5000);
+    else toast('No se pudo descargar automáticamente. Probá con el botón o cargá un archivo.',5000);
+  }finally{
+    setLoading(false);
+    document.getElementById('loading').classList.remove('big');
+    if(btn){btn.disabled=false; btn.textContent='Intentar descargar de Google Sheets';}
   }
 }
 
@@ -1035,6 +1092,40 @@ async function buscar(){
   }
 }
 
+// ── MI UBICACIÓN ──────────────────────────────────────────────────────────
+let meMarker=null, meCircle=null, meWatch=null, mePos=null;
+function pintarYo(pos,centrar){
+  const ll=[pos.coords.latitude,pos.coords.longitude], acc=pos.coords.accuracy||0;
+  mePos={lat:ll[0],lon:ll[1]};
+  if(!meMarker){
+    meCircle=L.circle(ll,{radius:acc,color:'#4C9AFF',weight:1,fillColor:'#4C9AFF',fillOpacity:.12,interactive:false}).addTo(map);
+    meMarker=L.marker(ll,{icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="me-dot"></div>'}),zIndexOffset:900}).addTo(map);
+    meMarker.bindPopup(()=>`<div style="padding:8px 10px;font-size:12px"><b>Mi ubicación</b><br>Precisión ±${Math.round(meCircle.getRadius())} m<br><button onclick="buscarDesdeMi()" style="margin-top:6px;padding:4px 8px;border:0;border-radius:4px;background:#E87D2B;color:#fff;font-weight:600;cursor:pointer">Buscar equipos desde aquí</button></div>`,{className:'autotrol-popup'});
+  }else{ meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
+  if(centrar) map.setView(ll,Math.max(map.getZoom(),16));
+}
+function miUbicacion(){
+  const btn=document.getElementById('locBtn');
+  if(!navigator.geolocation){toast('Este dispositivo no permite geolocalización');return;}
+  if(meWatch!==null && mePos){ map.setView([mePos.lat,mePos.lon],Math.max(map.getZoom(),16)); return; }
+  btn.classList.add('busy');
+  let primera=true;
+  meWatch=navigator.geolocation.watchPosition(pos=>{
+    btn.classList.remove('busy'); btn.classList.add('on');
+    pintarYo(pos,primera); primera=false;
+  },err=>{
+    btn.classList.remove('busy');
+    if(meWatch!==null){navigator.geolocation.clearWatch(meWatch);meWatch=null;}
+    toast(err.code===1?'Permiso de ubicación denegado. Habilitalo en el navegador.':'No se pudo obtener tu ubicación',5000);
+  },{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
+}
+function buscarDesdeMi(){
+  if(!mePos) return;
+  map.closePopup();
+  document.getElementById('addr-input').value='';
+  ejecutarBusqueda(mePos.lat,mePos.lon,getRadio(),'mi ubicación',{fit:true});
+}
+
 // ── ELEGIR PUNTO EN EL MAPA ───────────────────────────────────────────────
 function togglePick(force){
   pickMode = typeof force==='boolean' ? force : !pickMode;
@@ -1074,6 +1165,7 @@ function toast(msg,ms=3500){
 function adjustMap(){
   const sbH=document.getElementById('searchbar').getBoundingClientRect().height;
   document.getElementById('map').style.top=(68+sbH)+'px';
+  const sp=document.getElementById('sidePanels'); if(sp) sp.style.top=(68+sbH+10)+'px';
 }
 window.addEventListener('resize',adjustMap);
 adjustMap();
