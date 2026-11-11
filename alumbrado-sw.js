@@ -1,10 +1,11 @@
-// AUTOTROL · Equipamiento Alumbrado — Service Worker v4
-const VERSION    = 'autotrol-alumbrado-shell-v4';   // app shell (se renueva en cada versión)
+// AUTOTROL · Equipamiento Alumbrado — Service Worker v5
+const VERSION    = 'autotrol-alumbrado-shell-v5';   // app shell (se renueva en cada versión)
 const DATA_CACHE = 'autotrol-alumbrado-data-v1';    // JSON de datos: PERSISTENTE, no se borra al activar
 const SHELL_URLS = [
   './', './index.html',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
+  'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js'
 ];
 
 self.addEventListener('install', e => {

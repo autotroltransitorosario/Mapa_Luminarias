@@ -440,6 +440,26 @@ body.trillada .copy-btn{display:none}
 .gate-btn.busy .gate-spin{display:block}
 #userTag{display:block;font-size:10px;color:var(--muted)}
 #userTag a{color:var(--orange);cursor:pointer;text-decoration:underline;margin-left:6px}
+
+/* PANELES EN LA BARRA PRINCIPAL */
+#searchbar .dd{position:relative;width:auto;background:transparent;border:0;padding:0;box-shadow:none;border-radius:0;max-height:none}
+#searchbar #clasifPanel{display:none}
+#searchbar #clasifPanel.has-data{display:block}
+#searchbar .dd>h4{height:38px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);margin:0;gap:8px;
+  color:var(--text);font-size:12px;font-weight:700;text-transform:none;letter-spacing:0;display:flex;align-items:center;white-space:nowrap;cursor:pointer;user-select:none}
+#searchbar .dd:not(.collapsed)>h4{border-color:var(--orange);color:var(--orange)}
+.dd-body{position:absolute;top:calc(100% + 6px);left:0;min-width:210px;max-width:calc(100vw - 20px);
+  background:rgba(22,34,47,.98);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;z-index:3000;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.dd.collapsed .dd-body{display:none}
+#searchbar .dd .layer-row{display:flex}
+#searchbar #clasifList{max-height:50vh}
+#searchbar .dd{order:4}
+/* RECORRIDA: barra superior oculta */
+body.trillada #header,body.trillada #searchbar{display:none}
+#trillBanner{display:none;align-items:center;justify-content:space-between;gap:8px;height:40px;padding:0 10px;text-align:left;font-size:12px}
+body.trillada #trillBanner{display:flex}
+#trillBanner button{height:30px;padding:0 12px;border-radius:6px;border:1px solid #fff;background:rgba(0,0,0,.25);color:#fff;font-weight:800;cursor:pointer;white-space:nowrap}
+#trillBanner span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -543,23 +563,9 @@ body.trillada .copy-btn{display:none}
   <button id="search-btn" onclick="buscar()">Buscar</button>
   <button id="trill-btn" onclick="toggleTrillada()" title="Modo recorrida en terreno">🚶 Recorrida</button>
   <button id="pick-btn" onclick="toast('Hacé clic en cualquier lugar del mapa para colocar el punto de búsqueda')" title="Hacé clic en el mapa para colocar el punto">📍 Clic en el mapa</button>
-  <button id="uploadBtn" onclick="document.getElementById('file-input').click()" title="Cargar archivo CSV/TXT">
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zm-5 11a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H3z"/></svg>
-    Cargar archivo
-  </button>
-  <input type="file" id="file-input" accept=".csv,.txt" style="display:none" onchange="cargarDesdeArchivo(this)">
-</div>
-
-<!-- MAP -->
-<div id="map"></div>
-
-<!-- TOAST -->
-<div id="toast"></div>
-
-<!-- LAYER PANEL -->
-<div id="sidePanels">
-<div id="layerPanel" class="collapsed">
-  <h4 onclick="this.parentElement.classList.toggle('collapsed')"><span>Capas</span><span class="arrow">▾</span></h4>
+<div id="layerPanel" class="dd collapsed">
+  <h4 onclick="ddToggle(this.parentElement)"><span>Capas</span><span class="arrow">▾</span></h4>
+  <div class="dd-body">
   <label class="layer-row" id="lr-lampara">
     <input type="checkbox" checked data-tipo="lampara" style="color:var(--c-lampara)" onchange="toggleCapa(this)">
     <span class="layer-dot" style="background:var(--c-lampara)"></span>
@@ -596,23 +602,35 @@ body.trillada .copy-btn{display:none}
     <span class="layer-label">Sectores</span>
     <span class="layer-count" id="cnt-sectores">174</span>
   </label>
+  </div>
 </div>
-
-<!-- CLASIFICACIONES -->
-<div id="clasifPanel" class="collapsed">
-  <h4 onclick="this.parentElement.classList.toggle('collapsed')"><span>Clasificación</span><span class="arrow">▾</span></h4>
+  <div id="clasifPanel" class="dd collapsed">
+  <h4 onclick="ddToggle(this.parentElement)"><span>Clasificación</span><span class="arrow">▾</span></h4>
+  <div class="dd-body">
   <div id="clasifList"></div>
   <div class="cl-actions">
     <button onclick="setAllClasif(true)">Todas</button>
     <button onclick="setAllClasif(false)">Ninguna</button>
   </div>
+  </div>
+</div>
+  <button id="uploadBtn" onclick="document.getElementById('file-input').click()" title="Cargar archivo CSV/TXT">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-3 3a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414L7 7.586V2a1 1 0 0 1 1-1zm-5 11a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H3z"/></svg>
+    Cargar archivo
+  </button>
+  <input type="file" id="file-input" accept=".csv,.txt" style="display:none" onchange="cargarDesdeArchivo(this)">
 </div>
 
-</div>
+<!-- MAP -->
+<div id="map"></div>
 
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- LAYER PANEL -->
 <button id="locBtn" onclick="miUbicacion()" title="Mostrar mi ubicación"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg></button>
 
-<div id="trillBanner">RECORRIDA ACTIVA · ubicación en tiempo real · radio 200 m</div>
+<div id="trillBanner"><span id="trillTxt">RECORRIDA ACTIVA · ubicación en tiempo real · radio 200 m</span><button onclick="toggleTrillada()">✕ Terminar</button></div>
 <button id="histTab" onclick="abrirHistorial()">📋 Historial <span class="n" id="histN">0</span></button>
 <div id="histPanel">
   <header>
@@ -631,6 +649,7 @@ body.trillada .copy-btn{display:none}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
 <script>
 'use strict';
 
@@ -714,7 +733,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('./alumbrado-s
 
 // ── MAP INIT ───────────────────────────────────────────────────────────────
 function initMap(){
-  map = L.map('map',{center:[-32.883,-60.723],zoom:14,zoomControl:true,preferCanvas:true});
+  map = L.map('map',{center:[-32.883,-60.723],zoom:14,zoomControl:true,preferCanvas:true,rotate:true,bearing:0,touchRotate:false,rotateControl:false});
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap',maxZoom:19
@@ -729,7 +748,9 @@ function initMap(){
     layers[tipo] = L.layerGroup().addTo(map);
   });
   map.on('popupclose',()=>{lastPopupClose=Date.now();});
-  map.on('popupopen',centrarPopup);
+  map.on('popupopen',e=>{popupAbierto=true;centrarPopup(e);});
+  map.on('popupclose',()=>{popupAbierto=false;});
+  map.on('dragstart',()=>{if(trilladaOn&&!followPausado){followPausado=true;toast('Seguimiento en pausa. Tocá ◎ para retomarlo',3500);}});
   map.on('click',onMapClick);
   actualizarHistN();
   initSectores();
@@ -917,6 +938,7 @@ function cargarDesdeArchivo(input){
 function mostrarWelcome(){ document.getElementById('welcomeCard').classList.remove('hidden'); }
 function ocultarWelcome(){ document.getElementById('welcomeCard').classList.add('hidden'); }
 function actualizarBadge(){
+  document.getElementById('uploadBtn').style.display=datos.length?'none':'';
   construirClasificaciones(); if(ultimo) renderResultado();
   if(datos.length>0) document.getElementById('count-badge').textContent=`${datos.length.toLocaleString()} equipos`;
 }
@@ -1411,13 +1433,15 @@ function confirmarRecorrida(ev){
   recorrida={movil,chofer};
   try{localStorage.setItem(REC_KEY,JSON.stringify(recorrida));}catch(e){}
   document.getElementById('recGate').classList.add('hidden');
-  document.getElementById('trillBanner').textContent=`RECORRIDA ACTIVA · Móvil ${movil} · ${chofer}`;
+  document.getElementById('trillTxt').textContent=`RECORRIDA ACTIVA · Móvil ${movil} · ${chofer}`;
   _toggleTrillada();
   return false;
 }
 function _toggleTrillada(){
   trilladaOn=!trilladaOn;
+  followPausado=false; hdgRef=null;
   document.body.classList.toggle('trillada',trilladaOn);
+  if(!trilladaOn&&rotOK()){bearingObj=0;bearingAct=0;if(bearingRaf){cancelAnimationFrame(bearingRaf);bearingRaf=null;}map.setBearing(0);}
   document.getElementById('trill-btn').classList.toggle('active',trilladaOn);
   map.closePopup();
   if(trilladaOn){
@@ -1437,6 +1461,41 @@ function _toggleTrillada(){
   adjustMap();
 }
 // Cada vez que llega una posición: recarga los puntos a 200 m si te moviste >15 m
+let followPausado=false, popupAbierto=false, bearingAct=0, bearingObj=0, bearingRaf=null, hdgRef=null;
+const rotOK=()=>typeof map.setBearing==='function';
+function angDiff(a,b){let d=((b-a+540)%360)-180;return d;}
+function rumbo(la1,lo1,la2,lo2){
+  const r=Math.PI/180,y=Math.sin((lo2-lo1)*r)*Math.cos(la2*r),
+        x=Math.cos(la1*r)*Math.sin(la2*r)-Math.sin(la1*r)*Math.cos(la2*r)*Math.cos((lo2-lo1)*r);
+  return (Math.atan2(y,x)/r+360)%360;
+}
+function animarBearing(){
+  if(bearingRaf) return;
+  const paso=()=>{
+    const d=angDiff(bearingAct,bearingObj);
+    if(Math.abs(d)<0.4){bearingAct=bearingObj;bearingRaf=null;}
+    else{bearingAct=(bearingAct+d*0.18+360)%360;bearingRaf=requestAnimationFrame(paso);}
+    if(rotOK()) map.setBearing((360-bearingAct)%360);
+  };
+  bearingRaf=requestAnimationFrame(paso);
+}
+// En recorrida: seguir mi posición al centro y girar el mapa según el rumbo
+function seguirRecorrida(pos){
+  if(!trilladaOn||!mePos) return;
+  // rumbo: heading del GPS si me muevo, o calculado entre dos puntos separados >=6 m
+  let hdg=null;
+  const c=pos.coords;
+  if(typeof c.heading==='number'&&!isNaN(c.heading)&&(c.speed||0)>0.8) hdg=c.heading;
+  else if(!hdgRef) hdgRef={lat:mePos.lat,lon:mePos.lon};
+  else if(haversine(hdgRef.lat,hdgRef.lon,mePos.lat,mePos.lon)>=6){
+    hdg=rumbo(hdgRef.lat,hdgRef.lon,mePos.lat,mePos.lon); hdgRef={lat:mePos.lat,lon:mePos.lon};
+  }
+  if(hdg!==null && rotOK()){
+    // el mapa gira para que el avance quede hacia arriba; ignora variaciones <8° (ruido del GPS)
+    if(Math.abs(angDiff(bearingObj,hdg))>=8){bearingObj=hdg;animarBearing();}
+  }
+  if(!followPausado&&!popupAbierto) map.setView([mePos.lat,mePos.lon],Math.max(map.getZoom(),18),{animate:true,duration:.5});
+}
 function trilladaTick(forzar){
   if(!trilladaOn||!mePos) return;
   const mov=trillUltimo?haversine(trillUltimo.lat,trillUltimo.lon,mePos.lat,mePos.lon):1e9;
@@ -1525,6 +1584,7 @@ function pintarYo(pos,centrar){
 }
 function miUbicacion(){
   const btn=document.getElementById('locBtn');
+  if(trilladaOn&&mePos){followPausado=false;map.setView([mePos.lat,mePos.lon],Math.max(map.getZoom(),18));return;}
   if(!navigator.geolocation){toast('Este dispositivo no permite geolocalización');return;}
   if(meWatch!==null && mePos){ map.setView([mePos.lat,mePos.lon],Math.max(map.getZoom(),16)); return; }
   btn.classList.add('busy');
@@ -1532,7 +1592,7 @@ function miUbicacion(){
   meWatch=navigator.geolocation.watchPosition(pos=>{
     btn.classList.remove('busy'); btn.classList.add('on');
     pintarYo(pos,primera&&!trilladaOn); primera=false;
-    if(trilladaOn) trilladaTick();
+    if(trilladaOn){ trilladaTick(); seguirRecorrida(pos); }
   },err=>{
     btn.classList.remove('busy');
     if(meWatch!==null){navigator.geolocation.clearWatch(meWatch);meWatch=null;}
@@ -1584,10 +1644,27 @@ function toast(msg,ms=3500){
   toastTimer=setTimeout(()=>el.classList.remove('show'),ms);
 }
 function adjustMap(){
-  const sbH=document.getElementById('searchbar').getBoundingClientRect().height;
-  document.getElementById('map').style.top=(68+sbH)+'px';
-  const sp=document.getElementById('sidePanels'); if(sp) sp.style.top=(68+sbH+10)+'px';
+  const m=document.getElementById('map');
+  if(document.body.classList.contains('trillada')){
+    m.style.top='40px';
+  }else{
+    const sbH=document.getElementById('searchbar').getBoundingClientRect().height;
+    m.style.top=(68+sbH)+'px';
+  }
+  if(typeof map!=='undefined'&&map) map.invalidateSize();
 }
+// Paneles desplegables de la barra principal
+function ddToggle(el){
+  const abrir=el.classList.contains('collapsed');
+  document.querySelectorAll('#searchbar .dd').forEach(d=>d.classList.add('collapsed'));
+  if(abrir){
+    el.classList.remove('collapsed');
+    const b=el.querySelector('.dd-body'); b.style.left='0';b.style.right='auto';
+    const r=b.getBoundingClientRect();
+    if(r.right>window.innerWidth-8){b.style.left='auto';b.style.right='0';}
+  }
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#searchbar .dd'))document.querySelectorAll('#searchbar .dd').forEach(d=>d.classList.add('collapsed'));});
 window.addEventListener('resize',adjustMap);
 adjustMap();
 
