@@ -422,9 +422,56 @@ body.trillada .copy-btn{display:none}
 .est.e1{background:#D32F2F;color:#fff}.est.e2{background:#000;color:#fff;border:1px solid #fff}.est.e3{background:#4FC3F7;color:#04293a}
 .rowdel{background:transparent;border:0;color:#ff8a80;font-size:16px;cursor:pointer}
 #histEmpty{padding:40px 20px;text-align:center;color:var(--muted)}
+
+/* LOGIN + RECORRIDA MODAL */
+.gate{position:fixed;inset:0;z-index:6000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.gate.hidden{display:none}
+.gate-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 20px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.gate-card h2{font-size:18px;margin:0 0 4px;color:var(--orange)}
+.gate-card p{font-size:12px;color:var(--muted);margin:0 0 16px}
+.gate-card label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px}
+.gate-card input{width:100%;height:46px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:0 12px;font-size:16px}
+.gate-card input:focus{outline:2px solid var(--orange);border-color:var(--orange)}
+.gate-btn{width:100%;height:48px;margin-top:16px;border:0;border-radius:10px;background:var(--orange);color:#fff;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.gate-btn.sec{background:transparent;border:1px solid var(--border);color:var(--text);margin-top:8px;font-weight:600}
+.gate-btn:disabled{opacity:.7}
+.gate-err{color:#ff8a80;font-size:13px;min-height:18px;margin-top:10px;text-align:center}
+.gate-spin{width:18px;height:18px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:none}
+.gate-btn.busy .gate-spin{display:block}
+#userTag{display:block;font-size:10px;color:var(--muted)}
+#userTag a{color:var(--orange);cursor:pointer;text-decoration:underline;margin-left:6px}
 </style>
 </head>
 <body>
+
+<!-- LOGIN -->
+<div id="loginGate" class="gate hidden">
+  <form class="gate-card" onsubmit="return Auth.login(event)" autocomplete="on">
+    <h2>AUTOTROL · Alumbrado Rosario</h2>
+    <p>Ingresá con tu usuario para acceder a la aplicación.</p>
+    <label for="lg-user">Usuario</label>
+    <input id="lg-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" required>
+    <label for="lg-pass">Contraseña</label>
+    <input id="lg-pass" name="password" type="password" autocomplete="current-password" required>
+    <div class="gate-err" id="lg-err"></div>
+    <button class="gate-btn" id="lg-btn" type="submit"><span class="gate-spin"></span><span id="lg-txt">Ingresar</span></button>
+  </form>
+</div>
+
+<!-- RECORRIDA: datos del móvil -->
+<div id="recGate" class="gate hidden" style="z-index:4000;background:rgba(0,0,0,.72)">
+  <form class="gate-card" onsubmit="return confirmarRecorrida(event)">
+    <h2>🚶 Iniciar recorrida</h2>
+    <p>Estos datos se registran en cada reporte de estado.</p>
+    <label for="rec-movil">Número de móvil</label>
+    <input id="rec-movil" inputmode="numeric" autocomplete="off" required>
+    <label for="rec-chofer">Nombre y apellido del chofer</label>
+    <input id="rec-chofer" autocomplete="off" required>
+    <div class="gate-err" id="rec-err"></div>
+    <button class="gate-btn" type="submit">Iniciar recorrida</button>
+    <button class="gate-btn sec" type="button" onclick="cancelarRecorrida()">Cancelar</button>
+  </form>
+</div>
 
 <!-- LOADING -->
 <div id="loading" class="hidden">
@@ -474,6 +521,7 @@ body.trillada .copy-btn{display:none}
     <div id="header-version">
       <strong>Versión 1.2</strong>
       <span>Martin Cipriani</span>
+      <span id="userTag"></span>
     </div>
     <div id="count-badge">0 equipos</div>
     <button id="installBtn" onclick="pwaDeferredPrompt&&pwaDeferredPrompt.prompt()">⬇ Instalar</button>
@@ -1236,10 +1284,123 @@ function toggleSectores(cb){
   actualizarLabelsSectores();
 }
 
+// ── CONTROL DE ACCESO (planilla de usuarios en Google Sheets) ─────────────
+const USERS_SHEET_ID='1dhtxXNZEldMUjEQRzKHqkYoCRLL9Epqa7KPRwmPV-c8';
+const USERS_URL=`https://docs.google.com/spreadsheets/d/${USERS_SHEET_ID}/export?format=csv&gid=0`;
+const USERS_KEY='autotrol_alumbrado_users_v1', SESSION_KEY='autotrol_alumbrado_session_v1';
+const SESSION_HORAS=12;
+const Auth={
+  user:null, login_id:'', onOk:null, started:false,
+  init(cb){
+    this.onOk=cb;
+    try{
+      const ss=JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+      if(ss&&ss.exp>Date.now()){this.entrar(ss.nombre||ss.user,ss.user,false);return;}
+    }catch(e){}
+    document.getElementById('loginGate').classList.remove('hidden');
+    setTimeout(()=>document.getElementById('lg-user').focus(),100);
+  },
+  entrar(nombre,user,guardar){
+    this.user=nombre||user; this.login_id=user;
+    if(guardar){try{localStorage.setItem(SESSION_KEY,JSON.stringify({user,nombre,exp:Date.now()+SESSION_HORAS*3600e3}));}catch(e){}}
+    document.getElementById('loginGate').classList.add('hidden');
+    document.getElementById('userTag').innerHTML=`👤 ${esc(this.user)}<a onclick="Auth.logout()">Salir</a>`;
+    if(!this.started){this.started=true;this.onOk&&this.onOk();}
+  },
+  logout(){
+    try{localStorage.removeItem(SESSION_KEY);}catch(e){}
+    location.reload();
+  },
+  norm(v){return String(v==null?'':v).trim();},
+  parse(text){
+    const rows=parseCSVRows(text); if(rows.length<2) return [];
+    const hdr=rows[0].map(h=>this.norm(h).toLowerCase());
+    const find=re=>hdr.findIndex(h=>re.test(h));
+    let iu=find(/usuario|user|legajo|dni|mail|correo|login/), ip=find(/contrase|clave|pass|pin/);
+    if(iu<0) iu=0; if(ip<0||ip===iu) ip=iu===0?1:0;
+    const inom=find(/nombre|apellido|name/), iact=find(/activo|habilit|estado|vigente|baja/);
+    return rows.slice(1).filter(r=>this.norm(r[iu])).map(r=>({
+      u:this.norm(r[iu]), p:this.norm(r[ip]),
+      n:inom>=0&&inom!==iu&&inom!==ip?this.norm(r[inom]):'',
+      a:iact>=0?this.norm(r[iact]).toLowerCase():''
+    }));
+  },
+  activo(a){return !a || !/^(no|n|0|false|falso|inactivo|baja|deshabilitado|bloqueado)$/.test(a);},
+  async cargarUsuarios(){
+    try{
+      const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),15000);
+      const r=await fetch(USERS_URL,{signal:ctrl.signal}); clearTimeout(t);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const txt=await r.text(); if(txt.trim().startsWith('<')) throw new Error('html');
+      const list=this.parse(txt); if(!list.length) throw new Error('vacía');
+      try{localStorage.setItem(USERS_KEY,JSON.stringify(list));}catch(e){}
+      return {list,offline:false};
+    }catch(e){
+      try{const c=JSON.parse(localStorage.getItem(USERS_KEY)||'null'); if(c&&c.length) return {list:c,offline:true};}catch(_){}
+      return {list:null};
+    }
+  },
+  async login(ev){
+    ev.preventDefault();
+    const u=this.norm(document.getElementById('lg-user').value), p=this.norm(document.getElementById('lg-pass').value);
+    const err=document.getElementById('lg-err'), btn=document.getElementById('lg-btn');
+    err.textContent=''; btn.disabled=true; btn.classList.add('busy'); document.getElementById('lg-txt').textContent='Verificando…';
+    const {list,offline}=await this.cargarUsuarios();
+    btn.disabled=false; btn.classList.remove('busy'); document.getElementById('lg-txt').textContent='Ingresar';
+    if(!list){err.textContent='No se pudo consultar la tabla de usuarios. Verificá tu conexión.';return false;}
+    const m=list.find(x=>x.u.toLowerCase()===u.toLowerCase() && x.p===p);
+    if(!m){err.textContent='Usuario o contraseña incorrectos.';document.getElementById('lg-pass').value='';return false;}
+    if(!this.activo(m.a)){err.textContent='Tu usuario está deshabilitado. Contactá al administrador.';return false;}
+    this.entrar(m.n||m.u,m.u,true);
+    if(offline) toast('Ingresaste sin conexión con la última tabla de usuarios guardada',5000);
+    return false;
+  }
+};
+// Parser CSV (comillas, comas, saltos de línea)
+function parseCSVRows(text){
+  const rows=[];let row=[],cur='',q=false;
+  text=text.replace(/^\uFEFF/,'');
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){row.push(cur);cur='';}
+    else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';}
+    else if(c!=='\r') cur+=c;
+  }
+  if(cur||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+
 // ── RECORRIDA (en terreno) ───────────────────────────────────────
 let trilladaOn=false, trillUltimo=null, trillRadioPrev=null;
 const TRILL_RADIO=200;
+const REC_KEY='autotrol_alumbrado_recorrida_v1';
+let recorrida={movil:'',chofer:''};
 function toggleTrillada(){
+  if(!trilladaOn){ // pedir datos del móvil antes de iniciar
+    try{const g=JSON.parse(localStorage.getItem(REC_KEY)||'null');if(g){document.getElementById('rec-movil').value=g.movil||'';document.getElementById('rec-chofer').value=g.chofer||'';}}catch(e){}
+    document.getElementById('rec-err').textContent='';
+    document.getElementById('recGate').classList.remove('hidden');
+    setTimeout(()=>document.getElementById('rec-movil').focus(),100);
+    return;
+  }
+  _toggleTrillada();
+}
+function cancelarRecorrida(){document.getElementById('recGate').classList.add('hidden');}
+function confirmarRecorrida(ev){
+  ev.preventDefault();
+  const movil=document.getElementById('rec-movil').value.trim().replace(/\s+/g,' ');
+  const chofer=document.getElementById('rec-chofer').value.trim().replace(/\s+/g,' ');
+  if(!movil||chofer.split(' ').length<2){document.getElementById('rec-err').textContent='Ingresá el móvil y nombre y apellido del chofer.';return false;}
+  recorrida={movil,chofer};
+  try{localStorage.setItem(REC_KEY,JSON.stringify(recorrida));}catch(e){}
+  document.getElementById('recGate').classList.add('hidden');
+  document.getElementById('trillBanner').textContent=`RECORRIDA ACTIVA · Móvil ${movil} · ${chofer}`;
+  _toggleTrillada();
+  return false;
+}
+function _toggleTrillada(){
   trilladaOn=!trilladaOn;
   document.body.classList.toggle('trillada',trilladaOn);
   document.getElementById('trill-btn').classList.toggle('active',trilladaOn);
@@ -1296,12 +1457,12 @@ function fechaLocal(d){const p=n=>String(n).padStart(2,'0');return `${p(d.getDat
 function reportar(i,estado,btn){
   const d=ultimo&&ultimo.dentro[i]; if(!d) return;
   const sec=sectorDe(d.lat,d.lon);
-  const reg={fecha:fechaLocal(new Date()),estado,serie:d.serie,tipo:d.tipo||'',clasif:clasifName(d.clasif),
+  const reg={fecha:fechaLocal(new Date()),estado,movil:recorrida.movil,chofer:recorrida.chofer,usuario:(Auth.login_id||''),serie:d.serie,tipo:d.tipo||'',clasif:clasifName(d.clasif),
     calle:d.calle||'',altura:d.altura||'',subzona:sec?sec.sz:'',sector:sec?sec.s:'',zona:sec?sec.z:'',
     lat:d.lat.toFixed(6),lon:d.lon.toFixed(6),dist:Math.round(d.dist||0),
     mi_lat:mePos?mePos.lat.toFixed(6):'',mi_lon:mePos?mePos.lon.toFixed(6):''};
   const h=leerHist(); h.push(reg); guardarHist(h);
-  const txt=[`ESTADO: ${estado}`,`Fecha: ${reg.fecha}`,`Nº ${reg.serie}`,`Tipo: ${reg.tipo}`,`Clasificación: ${reg.clasif}`,
+  const txt=[`ESTADO: ${estado}`,`Fecha: ${reg.fecha}`,`Móvil: ${reg.movil}`,`Chofer: ${reg.chofer}`,`Nº ${reg.serie}`,`Tipo: ${reg.tipo}`,`Clasificación: ${reg.clasif}`,
     `Ubicación: ${reg.calle} ${reg.altura}`.trim(),sec?`Subzona ${sec.sz} · Sector ${sec.s} · Zona ${sec.z}`:'Fuera de los sectores',
     `A: ${reg.dist} m del punto`,`Coord: ${reg.lat}, ${reg.lon}`].join('\n');
   const fin=()=>{if(btn){btn.classList.add('sent');setTimeout(()=>btn.classList.remove('sent'),1200);}toast(`✓ "${estado}" guardado y copiado (${h.length} en Historial)`);};
@@ -1314,8 +1475,8 @@ function cerrarHistorial(){document.getElementById('histPanel').classList.remove
 function renderHistorial(){
   const h=leerHist(), w=document.getElementById('histWrap');
   if(!h.length){w.innerHTML='<div id="histEmpty">Todavía no hay reportes.<br>En modo Recorrida, tocá una luminaria y elegí un estado.</div>';return;}
-  w.innerHTML='<table id="histTable"><thead><tr><th>#</th><th>Fecha</th><th>Estado</th><th>Nº</th><th>Tipo</th><th>Clasificación</th><th>Ubicación</th><th>Subzona</th><th>Sector</th><th>Coord</th><th></th></tr></thead><tbody>'+
-    h.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.fecha)}</td><td><span class="est ${ESTADO_CLASE[r.estado]||''}">${esc(r.estado)}</span></td><td>${esc(r.serie)}</td><td>${esc(r.tipo)}</td><td>${esc(r.clasif)}</td><td>${esc((r.calle+' '+r.altura).trim())}</td><td>${esc(r.subzona)}</td><td>${esc(r.sector)}</td><td>${esc(r.lat)}, ${esc(r.lon)}</td><td><button class="rowdel" onclick="borrarFila(${i})" aria-label="Eliminar">🗑</button></td></tr>`).join('')+'</tbody></table>';
+  w.innerHTML='<table id="histTable"><thead><tr><th>#</th><th>Fecha</th><th>Móvil</th><th>Chofer</th><th>Estado</th><th>Nº</th><th>Tipo</th><th>Clasificación</th><th>Ubicación</th><th>Subzona</th><th>Sector</th><th>Coord</th><th></th></tr></thead><tbody>'+
+    h.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.fecha)}</td><td>${esc(r.movil)}</td><td>${esc(r.chofer)}</td><td><span class="est ${ESTADO_CLASE[r.estado]||''}">${esc(r.estado)}</span></td><td>${esc(r.serie)}</td><td>${esc(r.tipo)}</td><td>${esc(r.clasif)}</td><td>${esc((r.calle+' '+r.altura).trim())}</td><td>${esc(r.subzona)}</td><td>${esc(r.sector)}</td><td>${esc(r.lat)}, ${esc(r.lon)}</td><td><button class="rowdel" onclick="borrarFila(${i})" aria-label="Eliminar">🗑</button></td></tr>`).join('')+'</tbody></table>';
 }
 function borrarFila(i){const h=leerHist();h.splice(i,1);guardarHist(h);renderHistorial();}
 function borrarHistorial(){
@@ -1324,7 +1485,7 @@ function borrarHistorial(){
 }
 function descargarHistorialCSV(){
   const h=leerHist(); if(!h.length){toast('El historial está vacío');return;}
-  const cols=[['fecha','Fecha'],['estado','Estado'],['serie','Serie'],['tipo','Tipo'],['clasif','Clasificación'],['calle','Calle'],['altura','Altura'],['subzona','Subzona'],['sector','Sector'],['zona','Zona'],['lat','Latitud'],['lon','Longitud'],['dist','Distancia_m'],['mi_lat','Mi_latitud'],['mi_lon','Mi_longitud']];
+  const cols=[['fecha','Fecha'],['movil','Movil'],['chofer','Chofer'],['usuario','Usuario'],['estado','Estado'],['serie','Serie'],['tipo','Tipo'],['clasif','Clasificación'],['calle','Calle'],['altura','Altura'],['subzona','Subzona'],['sector','Sector'],['zona','Zona'],['lat','Latitud'],['lon','Longitud'],['dist','Distancia_m'],['mi_lat','Mi_latitud'],['mi_lon','Mi_longitud']];
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const csv='\uFEFF'+[cols.map(c=>q(c[1])).join(';')].concat(h.map(r=>cols.map(c=>q(r[c[0]])).join(';'))).join('\r\n');
   const a=document.createElement('a');
@@ -1416,7 +1577,7 @@ adjustMap();
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 initMap();
-cargarDatos();
+Auth.init(()=>cargarDatos());
 </script>
 </body>
 </html>
