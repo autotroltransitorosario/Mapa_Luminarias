@@ -449,7 +449,7 @@ body.trillada .copy-btn{display:none}
   <form class="gate-card" onsubmit="return Auth.login(event)" autocomplete="on">
     <h2>AUTOTROL · Alumbrado Rosario</h2>
     <p>Ingresá con tu usuario para acceder a la aplicación.</p>
-    <label for="lg-user">Usuario</label>
+    <label for="lg-user">Usuario (nombre o ID)</label>
     <input id="lg-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" required>
     <label for="lg-pass">Contraseña</label>
     <input id="lg-pass" name="password" type="password" autocomplete="current-password" required>
@@ -1287,24 +1287,25 @@ function toggleSectores(cb){
 // ── CONTROL DE ACCESO (planilla de usuarios en Google Sheets) ─────────────
 const USERS_SHEET_ID='1dhtxXNZEldMUjEQRzKHqkYoCRLL9Epqa7KPRwmPV-c8';
 const USERS_URL=`https://docs.google.com/spreadsheets/d/${USERS_SHEET_ID}/export?format=csv&gid=0`;
-const USERS_KEY='autotrol_alumbrado_users_v1', SESSION_KEY='autotrol_alumbrado_session_v1';
+const USERS_KEY='autotrol_alumbrado_users_v2', SESSION_KEY='autotrol_alumbrado_session_v2';
 const SESSION_HORAS=12;
+// Tabla: ID | Nombre | Pass | Rol | Estado | Lectura | Escritura
 const Auth={
-  user:null, login_id:'', onOk:null, started:false,
+  user:null, login_id:'', rol:'', escritura:true, onOk:null, started:false, diag:'',
   init(cb){
     this.onOk=cb;
     try{
       const ss=JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
-      if(ss&&ss.exp>Date.now()){this.entrar(ss.nombre||ss.user,ss.user,false);return;}
+      if(ss&&ss.exp>Date.now()){this.entrar(ss,false);return;}
     }catch(e){}
     document.getElementById('loginGate').classList.remove('hidden');
     setTimeout(()=>document.getElementById('lg-user').focus(),100);
   },
-  entrar(nombre,user,guardar){
-    this.user=nombre||user; this.login_id=user;
-    if(guardar){try{localStorage.setItem(SESSION_KEY,JSON.stringify({user,nombre,exp:Date.now()+SESSION_HORAS*3600e3}));}catch(e){}}
+  entrar(u,guardar){
+    this.user=u.nombre; this.login_id=u.nombre; this.rol=u.rol||''; this.escritura=u.escritura!==false;
+    if(guardar){try{localStorage.setItem(SESSION_KEY,JSON.stringify(Object.assign({},u,{exp:Date.now()+SESSION_HORAS*3600e3})));}catch(e){}}
     document.getElementById('loginGate').classList.add('hidden');
-    document.getElementById('userTag').innerHTML=`👤 ${esc(this.user)}<a onclick="Auth.logout()">Salir</a>`;
+    document.getElementById('userTag').innerHTML=`👤 ${esc(this.user)}${this.rol?' · '+esc(this.rol):''}<a onclick="Auth.logout()">Salir</a>`;
     if(!this.started){this.started=true;this.onOk&&this.onOk();}
   },
   logout(){
@@ -1312,20 +1313,27 @@ const Auth={
     location.reload();
   },
   norm(v){return String(v==null?'':v).trim();},
+  nz(v){return String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f\s]/g,'').toLowerCase();},
+  ok(v){return !v || /^(si|sí|s|1|true|verdadero|habilitad[oa]|activo|activa|ok|x)$/i.test(this.norm(v));},
   parse(text){
     const rows=parseCSVRows(text); if(rows.length<2) return [];
-    const hdr=rows[0].map(h=>this.norm(h).toLowerCase());
-    const find=re=>hdr.findIndex(h=>re.test(h));
-    let iu=find(/usuario|user|legajo|dni|mail|correo|login/), ip=find(/contrase|clave|pass|pin/);
-    if(iu<0) iu=0; if(ip<0||ip===iu) ip=iu===0?1:0;
-    const inom=find(/nombre|apellido|name/), iact=find(/activo|habilit|estado|vigente|baja/);
-    return rows.slice(1).filter(r=>this.norm(r[iu])).map(r=>({
-      u:this.norm(r[iu]), p:this.norm(r[ip]),
-      n:inom>=0&&inom!==iu&&inom!==ip?this.norm(r[inom]):'',
-      a:iact>=0?this.norm(r[iact]).toLowerCase():''
+    const RP=/pass|contrase|clave|pin/;
+    let h=0;
+    for(let r=0;r<Math.min(8,rows.length);r++){
+      if(rows[r].some(x=>RP.test(this.norm(x).toLowerCase()))){h=r;break;}
+    }
+    const hdr=rows[h].map(x=>this.norm(x).toLowerCase());
+    const find=re=>hdr.findIndex(x=>re.test(x));
+    const ip=find(RP), ii=find(/^id$|usuario|legajo|dni|user|login/), inom=find(/nombre|apellido/),
+          irol=find(/^rol|perfil/), iest=find(/estado|activo|habilit/), ilec=find(/lectura/), iesc=find(/escritura/);
+    const g=(r,i)=>i>=0?this.norm(r[i]):'';
+    const lista=rows.slice(h+1).filter(r=>g(r,inom)||g(r,ii)).map(r=>({
+      id:g(r,ii), n:g(r,inom)||g(r,ii), p:g(r,ip), rol:g(r,irol),
+      est:g(r,iest), lec:g(r,ilec), esc:g(r,iesc)
     }));
+    this.diag=`Tabla: ${lista.length} usuarios · nombre=«${rows[h][inom]||'—'}» · pass=«${rows[h][ip]||'—'}»`;
+    return lista;
   },
-  activo(a){return !a || !/^(no|n|0|false|falso|inactivo|baja|deshabilitado|bloqueado)$/.test(a);},
   async cargarUsuarios(){
     try{
       const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),15000);
@@ -1348,10 +1356,16 @@ const Auth={
     const {list,offline}=await this.cargarUsuarios();
     btn.disabled=false; btn.classList.remove('busy'); document.getElementById('lg-txt').textContent='Ingresar';
     if(!list){err.textContent='No se pudo consultar la tabla de usuarios. Verificá tu conexión.';return false;}
-    const m=list.find(x=>x.u.toLowerCase()===u.toLowerCase() && x.p===p);
-    if(!m){err.textContent='Usuario o contraseña incorrectos.';document.getElementById('lg-pass').value='';return false;}
-    if(!this.activo(m.a)){err.textContent='Tu usuario está deshabilitado. Contactá al administrador.';return false;}
-    this.entrar(m.n||m.u,m.u,true);
+    const cand=list.filter(x=>this.nz(x.n)===this.nz(u)||(x.id&&this.nz(x.id)===this.nz(u)));
+    const m=cand.find(x=>x.p===p);
+    if(!m){
+      err.textContent=cand.length?'Contraseña incorrecta.':'El usuario no existe en la tabla.';
+      if(this.diag) err.innerHTML+=`<br><small style="color:var(--muted)">${esc(this.diag)}</small>`;
+      document.getElementById('lg-pass').value='';return false;
+    }
+    if(!this.ok(m.est)){err.textContent='Tu usuario está deshabilitado. Contactá al administrador.';return false;}
+    if(!this.ok(m.lec)){err.textContent='Tu usuario no tiene permiso de lectura.';return false;}
+    this.entrar({nombre:m.n,rol:m.rol,escritura:this.ok(m.esc)},true);
     if(offline) toast('Ingresaste sin conexión con la última tabla de usuarios guardada',5000);
     return false;
   }
@@ -1378,7 +1392,8 @@ const TRILL_RADIO=200;
 const REC_KEY='autotrol_alumbrado_recorrida_v1';
 let recorrida={movil:'',chofer:''};
 function toggleTrillada(){
-  if(!trilladaOn){ // pedir datos del móvil antes de iniciar
+  if(!trilladaOn){
+    if(!Auth.escritura){toast('Tu usuario no tiene permiso de escritura para registrar recorridas',4000);return;} // pedir datos del móvil antes de iniciar
     try{const g=JSON.parse(localStorage.getItem(REC_KEY)||'null');if(g){document.getElementById('rec-movil').value=g.movil||'';document.getElementById('rec-chofer').value=g.chofer||'';}}catch(e){}
     document.getElementById('rec-err').textContent='';
     document.getElementById('recGate').classList.remove('hidden');
@@ -1455,6 +1470,7 @@ const ESTADO_CLASE={'Lámpara apagada':'e1','Sector apagado':'e2','Iluminación 
 function fechaLocal(d){const p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
 
 function reportar(i,estado,btn){
+  if(!Auth.escritura){toast('Tu usuario no tiene permiso de escritura',4000);return;}
   const d=ultimo&&ultimo.dentro[i]; if(!d) return;
   const sec=sectorDe(d.lat,d.lon);
   const reg={fecha:fechaLocal(new Date()),estado,movil:recorrida.movil,chofer:recorrida.chofer,usuario:(Auth.login_id||''),serie:d.serie,tipo:d.tipo||'',clasif:clasifName(d.clasif),
