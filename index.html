@@ -406,7 +406,6 @@ body.trillada .trill-actions{display:flex}
 .trill-btn.negro{background:#000;color:#fff;border-color:#fff}
 .trill-btn.celeste{background:#4FC3F7;color:#04293a}
 .trill-btn.sent{outline:3px solid #4ade80}
-body.trillada .copy-btn{display:none}
 #histPanel{position:fixed;inset:0;z-index:3000;background:var(--bg,#0f1b27);display:none;flex-direction:column}
 #histPanel.open{display:flex}
 #histPanel header{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--border);flex-wrap:wrap}
@@ -460,6 +459,14 @@ body.trillada #header,body.trillada #searchbar{display:none}
 body.trillada #trillBanner{display:flex}
 #trillBanner button{height:30px;padding:0 12px;border-radius:6px;border:1px solid #fff;background:rgba(0,0,0,.25);color:#fff;font-weight:800;cursor:pointer;white-space:nowrap}
 #trillBanner span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* POPUP: cerrar cómodo con el dedo */
+.autotrol-popup .leaflet-popup-close-button{width:44px !important;height:44px !important;font-size:30px !important;line-height:40px !important;top:0 !important;right:0 !important;
+  display:flex;align-items:center;justify-content:center;padding:0 !important;color:var(--muted) !important}
+.autotrol-popup .leaflet-popup-close-button:hover{color:#fff !important}
+.popup-head{padding-right:34px !important;min-height:34px}
+.popup-close-btn{width:100%;min-height:46px;margin-top:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.popup-close-btn:active{background:rgba(255,255,255,.1)}
 </style>
 </head>
 <body>
@@ -749,7 +756,7 @@ function initMap(){
   });
   map.on('popupclose',()=>{lastPopupClose=Date.now();});
   map.on('popupopen',e=>{popupAbierto=true;centrarPopup(e);});
-  map.on('popupclose',()=>{popupAbierto=false;});
+  map.on('popupclose',()=>{popupAbierto=false;if(trilladaOn&&!followPausado&&mePos)map.setView([mePos.lat,mePos.lon],Math.max(map.getZoom(),18),{animate:true,duration:.5});});
   map.on('dragstart',()=>{if(trilladaOn&&!followPausado){followPausado=true;toast('Seguimiento en pausa. Tocá ◎ para retomarlo',3500);}});
   map.on('click',onMapClick);
   actualizarHistN();
@@ -1003,6 +1010,13 @@ function copiarPopup(btn){
   lines.push('Tipo: '+t(body.querySelector('.popup-tipo')));
   body.querySelectorAll('.popup-row').forEach(r=>lines.push(t(r)));
   const sect=body.querySelector('.popup-sect'); if(sect) lines.splice(4,0,t(sect));
+  // eventos fijados (reportes de estado) de esta luminaria: se agregan al texto copiado
+  const serie=t(body.querySelector('.popup-serie')).replace(/^N[º°]\s*/,'');
+  const evs=leerHist().filter(r=>String(r.serie)===serie);
+  if(evs.length){
+    lines.push('— Eventos registrados —');
+    evs.forEach(r=>lines.push(`${r.fecha} · ${r.estado} · Móvil ${r.movil||'-'} · ${r.chofer||'-'}`));
+  }
   const txt=lines.join('\n');
   const ok=()=>{btn.innerHTML=CHECK_SVG;toast('✓ Datos copiados al portapapeles');setTimeout(()=>{btn.innerHTML=COPY_SVG;},1500);};
   const fallback=()=>{
@@ -1030,6 +1044,7 @@ function makePopup(d){
       <button class="trill-btn negro"  onclick="reportar(${d._i},'Sector apagado',this)">⬛ Sector apagado</button>
       <button class="trill-btn celeste" onclick="reportar(${d._i},'Iluminación deficiente',this)">🔅 Iluminación deficiente</button>
     </div>
+    <button class="popup-close-btn" onclick="map.closePopup()">✕ Cerrar</button>
   </div>`;
 }
 
@@ -1540,7 +1555,7 @@ function reportar(i,estado,btn){
   const txt=[`ESTADO: ${estado}`,`Fecha: ${reg.fecha}`,`Móvil: ${reg.movil}`,`Chofer: ${reg.chofer}`,`Nº ${reg.serie}`,`Tipo: ${reg.tipo}`,`Clasificación: ${reg.clasif}`,
     `Ubicación: ${reg.calle} ${reg.altura}`.trim(),sec?`Subzona ${sec.sz} · Sector ${sec.s} · Zona ${sec.z}`:'Fuera de los sectores',
     `A: ${reg.dist} m del punto`,`Coord: ${reg.lat}, ${reg.lon}`].join('\n');
-  const fin=()=>{if(btn){btn.classList.add('sent');setTimeout(()=>btn.classList.remove('sent'),1200);}toast(`✓ "${estado}" guardado y copiado (${h.length} en Historial)`);};
+  const fin=()=>{if(btn){btn.classList.add('sent');setTimeout(()=>btn.classList.remove('sent'),1200);}toast(`✓ "${estado}" guardado y copiado (${h.length} en Historial)`);setTimeout(()=>map.closePopup(),350);};
   const fb=()=>{const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();fin();};
   if(navigator.clipboard&&window.isSecureContext) navigator.clipboard.writeText(txt).then(fin,fb); else fb();
 }
